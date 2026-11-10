@@ -103,6 +103,13 @@ class Settings(BaseSettings):
 
     # ---- storage ------------------------------------------------------------
     storage_backend: Literal["local", "gcp"] = "local"
+    # Co-host memory (memory.py). Unset: on with local storage, off on GCP, so a deploy
+    # doesn't start writing memories to Firestore until MEMORY_ENABLED=true says so.
+    memory_enabled: bool | None = None
+
+    @property
+    def memory_on(self) -> bool:
+        return self.storage_backend == "local" if self.memory_enabled is None else self.memory_enabled
     data_dir: str = "data"
     gcs_bucket: str = ""
     gcp_project: str = ""

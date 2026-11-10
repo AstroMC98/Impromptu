@@ -114,6 +114,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import ingest as ingest_mod
 from . import memo as memo_mod
+from . import memory
 from . import notes as notes_mod
 from .accounts import Accounts, User, published
 from .auth import COOKIE, SESSION_MAX_AGE, Auth, AuthError, client_ip, same_origin
@@ -629,6 +630,7 @@ async def favicon() -> FileResponse:
 @app.get("/cohost")
 @app.get("/login")
 @app.get("/personas")
+@app.get("/memory")
 @app.get("/styles")
 @app.get("/connections")
 @app.get("/admin")
@@ -666,6 +668,7 @@ async def options(request: Request) -> dict:
         "templates": TEMPLATES,
         "persona_presets": PERSONA_PRESETS,
         "cohost_modes": [{k: m[k] for k in ("id", "label", "blurb", "accent")} for m in COHOST_MODES],
+        "memory": settings.memory_on,
         "cohost_source_chars": settings.cohost_source_chars,
         "cohost_notes_max_chars": settings.cohost_notes_max_chars,
         "host_colors": HOST_COLORS,
@@ -848,6 +851,96 @@ def _saved_item_routes(kind: str, model: type[BaseModel], noun: str) -> None:
 
 
 _saved_item_routes("personas", PersonaIn, "persona")
+
+
+# ---- memory: what your co-hosts remember about you (memory.py) -------------------------
+
+class MemoryIn(BaseModel):
+    text: str = Field(min_length=1, max_length=memory.MEMORY_CHARS * 2)
+    scope: Literal["host", "shared"] = "shared"
+    host: str = Field(default="", max_length=40)
+
+
+class MemoryEdit(BaseModel):
+    text: str | None = Field(default=None, max_length=memory.MEMORY_CHARS * 2)
+    scope: Literal["host", "shared"] | None = None
+    status: Literal["kept"] | None = None      # approving a proposal
+
+
+def _require_memory() -> None:
+    if not settings.memory_on:
+        raise HTTPException(status_code=404, detail="Memory isn't switched on here yet.")
+
+
+async def _memory(uid: str, memory_id: str) -> dict:
+    found = next((m for m in await memory.all_items(store, uid) if m["id"] == memory_id), None)
+    if not found:
+        raise HTTPException(status_code=404, detail="No such memory.")
+    return found
+
+
+async def _room_for_memory(uid: str) -> None:
+    kept = memory.split(await memory.all_items(store, uid))["kept"]
+    if len(kept) >= memory.MAX_KEPT:
+        raise HTTPException(status_code=422, detail=f"You can keep up to {memory.MAX_KEPT} memories. Remove one first.")
+
+
+@app.get("/api/memories")
+async def list_memories(request: Request) -> dict:
+    user = await require_user(request)
+    if not settings.memory_on:
+        return {"pending": [], "kept": []}
+    return memory.split(await memory.all_items(store, user.uid))
+
+
+@app.post("/api/memories")
+async def add_memory(body: MemoryIn, request: Request) -> dict:
+    """A memory you wrote yourself: kept at once."""
+    _require_memory()
+    _require_origin(request)
+    user = await require_user(request)
+    text = memory.clean_text(body.text)
+    if not text:
+        raise HTTPException(status_code=422, detail="Write what to remember.")
+    await _room_for_memory(user.uid)
+    scope = "host" if body.scope == "host" and body.host.strip() else "shared"
+    item = memory.new_item(text, status="kept", scope=scope, host=body.host if scope == "host" else "")
+    await store.put_item(user.uid, memory.KIND, item)
+    return item
+
+
+@app.put("/api/memories/{memory_id}")
+async def edit_memory(memory_id: str, body: MemoryEdit, request: Request) -> dict:
+    """Approve a proposal (status: kept), reword a memory, or move it between one
+    co-host and all of them."""
+    _require_memory()
+    _require_origin(request)
+    user = await require_user(request)
+    item = await _memory(user.uid, memory_id)
+    if body.status == "kept" and item.get("status") != "kept":
+        await _room_for_memory(user.uid)
+        item["status"] = "kept"
+    if body.text is not None:
+        text = memory.clean_text(body.text)
+        if not text:
+            raise HTTPException(status_code=422, detail="A memory can't be empty. Remove it instead.")
+        item["text"] = text
+    if body.scope is not None:
+        item["scope"] = body.scope if body.scope == "shared" or item.get("host_key") else "shared"
+    item["updated_at"] = time.time()
+    await store.put_item(user.uid, memory.KIND, item)
+    return item
+
+
+@app.delete("/api/memories/{memory_id}")
+async def forget_memory(memory_id: str, request: Request) -> dict:
+    """Turn a proposal down, or forget something kept."""
+    _require_memory()
+    _require_origin(request)
+    user = await require_user(request)
+    await _memory(user.uid, memory_id)
+    await store.delete_item(user.uid, memory.KIND, memory_id)
+    return {"ok": True}
 _saved_item_routes("styles", StyleIn, "style")
 
 
@@ -1509,6 +1602,8 @@ async def create_cohost(body: NewCohost, request: Request) -> dict:
     _require_origin(request)
     user = await require_user(request)
     req = body.request
+    if not settings.memory_on:
+        req = req.model_copy(update={"use_memory": False})
     cost = _cost(req.minutes)
     if user.credits < cost:
         raise _broke((
@@ -1590,8 +1685,10 @@ async def create_cohost(body: NewCohost, request: Request) -> dict:
     except Exception:
         await accounts.adjust_credits(user.uid, cost, reason="refund", show_id=show_id, note="Couldn't start")
         raise
+    remembered = await memory.recall(store, user.uid, host.name) if req.use_memory else []
     call = CohostSession(doc=doc, request=req, host=host, you=you, notes=given, gemini=model,
-                         settings=settings, store=store, on_closed=cohosts.remove, music=library, index=index)
+                         settings=settings, store=store, on_closed=cohosts.remove, music=library, index=index,
+                         memories=remembered)
     cohosts.add(call)
     return {"id": show_id, "trimmed": len(req.notes) > settings.cohost_notes_max_chars,
             "notes": "whole" if index is None else "brief" if brief else "first_part",

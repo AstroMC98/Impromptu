@@ -939,18 +939,26 @@ TOPIC:
 {notes}"""
 
 
-def cohost_system(req: CohostRequest, host: Host, user_name: str, notes: str, lookup: bool = False) -> str:
+def cohost_system(req: CohostRequest, host: Host, user_name: str, notes: str, lookup: bool = False,
+                  memories: list[str] | None = None) -> str:
     """notes: the whole notes, or, when they're too long for that (lookup), a brief of
-    them; the co-host then searches the full notes with the check_notes tool."""
+    them; the co-host then searches the full notes with the check_notes tool.
+    memories: what this co-host remembers about the person from earlier calls."""
     material = ""
+    if memories:
+        remembered = "\n".join(f"- {m}" for m in memories)
+        material = (f"\nWHAT YOU REMEMBER about {user_name} from earlier conversations. Use it the way a "
+                    f"friend would: bring one up when it's relevant, ask how something turned out, don't "
+                    f"recite it, and don't say you have a list. If {user_name} says one is wrong or has "
+                    f"changed, take their word for it.\n{remembered}\n")
     if notes.strip() and lookup:
-        material = (f"\nNOTES from {user_name} are long, so you have a brief of them below and can search "
+        material += (f"\nNOTES from {user_name} are long, so you have a brief of them below and can search "
                     f"the full notes with the check_notes tool. Check them before you state a name, number, "
                     f"date or quote from the notes that the brief doesn't give you, and when {user_name} asks "
                     f"what the notes say about something. Don't check them for small talk. Draw on them when "
                     f"they fit; never read them out as a list.\n<<<\n{notes}\n>>>\n")
     elif notes.strip():
-        material = (f"\nNOTES from {user_name}, to draw on when they fit (never read them out "
+        material += (f"\nNOTES from {user_name}, to draw on when they fit (never read them out "
                     f"as a list):\n<<<\n{notes}\n>>>\n")
     return COHOST_SYSTEM.format(
         name=host.name,
@@ -961,6 +969,49 @@ def cohost_system(req: CohostRequest, host: Host, user_name: str, notes: str, lo
         topic=req.topic.strip(),
         notes=material,
     ) + hard_rules(req.hard_rules)
+
+
+MEMORY_SYSTEM = """\
+You read the transcript of a recorded conversation between {user} and {host}, an AI \
+co-host, and pick out what {host} should remember about {user} next time they talk.
+
+A memory is one lasting fact about {user}, in one plain sentence that names them: who \
+they are, what they do, what they're working on or planning, people and places in their \
+life, what they like and can't stand, how they like to be talked to. Only what {user} \
+said themselves or clearly agreed to.
+
+Leave out: the topic of this conversation as such, opinions that were only part of a \
+debate or a role they played, anything {host} said about themselves, small talk, and \
+anything in the ALREADY KNOWN list. Leave out health, money, politics, religion and \
+other sensitive details unless {user} plainly offered them as something about \
+themselves. If nothing is worth keeping, return an empty list; most short calls have \
+one to three.
+
+For each memory, scope is "host" when it matters mostly to this co-host's kind of \
+conversation, and "shared" when any co-host would want to know it (their name, job, \
+family, standing preferences). At most {limit}, the most useful first. Write them in \
+the language of the conversation."""
+
+
+def memory_input(turns: list[dict], known: list[str]) -> str:
+    said = "\n".join(
+        f"{t['speaker']}: " + (" ".join(p["text"] for p in t.get("phrases", []) if p.get("text")) if t.get("you")
+                               else t.get("text", ""))
+        for t in turns)
+    already = "\n".join(f"- {k}" for k in known) or "(nothing yet)"
+    return f"ALREADY KNOWN:\n{already}\n\nTRANSCRIPT:\n<<<\n{said}\n>>>"
+
+
+def memory_schema() -> dict:
+    return {
+        "type": "object",
+        "properties": {"memories": {"type": "array", "items": {
+            "type": "object",
+            "properties": {"text": {"type": "string"}, "scope": {"type": "string", "enum": ["host", "shared"]}},
+            "required": ["text", "scope"],
+        }}},
+        "required": ["memories"],
+    }
 
 
 NOTES_BRIEF_SYSTEM = """\

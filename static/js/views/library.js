@@ -543,6 +543,7 @@ export async function youView(root) {
         <a class="menu-item" href="/intro" data-link>${icon("mic", 20)}Show intro${icon("chevronRight", 16)}</a>
         <a class="menu-item" href="/memo" data-link>${icon("mic", 20)}Pod from a voice memo${icon("chevronRight", 16)}</a>
         <a class="menu-item" href="/personas" data-link>${icon("user", 20)}Personas${icon("chevronRight", 16)}</a>
+        ${session.options.memory ? html`<a class="menu-item" href="/memory" data-link>${icon("heart", 20)}Memory<span class="faint">what your co-hosts remember</span>${icon("chevronRight", 16)}</a>` : ""}
         <a class="menu-item" href="/styles" data-link>${icon("restyle", 20)}Styles${icon("chevronRight", 16)}</a>
         <a class="menu-item" href="/connections" data-link>${icon("people", 20)}Connections
           ${session.incoming ? html`<span class="tag new-tag">${session.incoming} new</span>` : ""}${icon("chevronRight", 16)}</a>

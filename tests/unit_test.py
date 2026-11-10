@@ -2034,6 +2034,40 @@ def _():
     assert "Educate." in prompts.cohost_mode_switch("educate")
 
 
+@check("memory: proposals wait for a yes, repeats are skipped, and a co-host recalls their own and the shared")
+def _():
+    from app import memory
+
+    async def run():
+        store = LocalStore(tempfile.mkdtemp(prefix="podcasts-memory-"))
+        found = [{"text": "Marc is training for a half marathon in March.", "scope": "host"},
+                 {"text": "Marc's daughter is called Ines.", "scope": "shared"},
+                 {"text": "marc is training for a half marathon in March", "scope": "host"},   # the same again
+                 {"text": "ok", "scope": "host"}]                                               # too short to mean anything
+        assert await memory.propose(store, "u1", found, host="Nova", show_id="s1", show_title="Running") == 2
+        assert await memory.propose(store, "u1", found, host="Nova", show_id="s2", show_title="Again") == 0
+        assert await memory.recall(store, "u1", "Nova") == []           # nothing is kept until it's approved
+        items = await memory.all_items(store, "u1")
+        assert all(m["status"] == "pending" and m["host_key"] == "nova" for m in items)
+        for m in items:
+            await store.put_item("u1", memory.KIND, {**m, "status": "kept"})
+        await store.put_item("u1", memory.KIND, memory.new_item("Marc hates coriander.", status="kept", scope="host", host="Theo"))
+        nova = await memory.recall(store, "u1", "  NOVA ")
+        assert nova == ["Marc is training for a half marathon in March.", "Marc's daughter is called Ines."]
+        assert await memory.recall(store, "u1", "Theo") == ["Marc hates coriander.", "Marc's daughter is called Ines."]
+        assert await memory.recall(store, "u2", "Nova") == []
+    asyncio.run(run())
+
+    req = CohostRequest(host=HostRequest(name="Nova"), topic="Bread", use_memory=True, hard_rules=["Never swear."])
+    system = prompts.cohost_system(req, cast_cohost(req.host), "Marc", "SOME NOTES", memories=["Marc bakes on Sundays."])
+    assert "WHAT YOU REMEMBER about Marc" in system and "- Marc bakes on Sundays." in system and "SOME NOTES" in system
+    assert system.index("WHAT YOU REMEMBER") < system.index("HARD RULES")
+    assert "WHAT YOU REMEMBER" not in prompts.cohost_system(req, cast_cohost(req.host), "Marc", "SOME NOTES")
+    said = prompts.memory_input([{"speaker": "Marc", "you": True, "phrases": [{"id": 0, "text": "I bake"}, {"id": 1, "text": "on Sundays"}]},
+                                 {"speaker": "Nova", "you": False, "text": "Every Sunday?"}], ["Marc lives in Manila."])
+    assert "Marc: I bake on Sundays" in said and "Nova: Every Sunday?" in said and "- Marc lives in Manila." in said
+
+
 def main() -> int:
     width = max(len(n) for n, _, _ in RESULTS)
     for name, ok, err in RESULTS:

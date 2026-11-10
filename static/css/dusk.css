@@ -404,6 +404,58 @@
   }
   .kept-item .sleeve.sm { width: 36px; height: 36px; border-radius: 50%; }
 
+  /* ---- Memory: proposals as a deck you swipe, and what's kept ---------------------------------------- */
+  .memory-main { max-width: 620px; margin: 0 auto; padding: 8px var(--gutter) 64px; display: flex; flex-direction: column; gap: 34px; }
+  .memory-main .page-title { margin-bottom: 0; }
+  .mem-review { display: flex; flex-direction: column; align-items: center; }
+  .mem-review:empty { display: none; }
+  .mem-h { align-self: flex-start; font: 600 20px/1.1 var(--f-head); letter-spacing: -.03em; margin-bottom: 14px; }
+  .mem-h .faint, .mem-group-h .faint { font-weight: 600; font-size: .8em; margin-left: 4px; }
+  .mdeck { position: relative; width: min(100%, 372px); aspect-ratio: 4 / 3.5; border-radius: 30px; }
+  .mdeck:focus-visible { outline-offset: 6px; }
+  .mcard {
+    position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; padding: 24px;
+    border-radius: 30px; overflow: hidden; color: #fff; text-align: left;
+    background:
+      radial-gradient(120% 90% at 90% 0%, color-mix(in oklch, var(--gel) 70%, #fff 30%) 0%, transparent 55%),
+      linear-gradient(150deg, var(--gel), color-mix(in oklch, var(--gel) 42%, #000));
+    box-shadow: 0 34px 60px -34px color-mix(in oklch, var(--gel) 70%, #000);
+    touch-action: pan-y; user-select: none; -webkit-user-select: none; cursor: grab; will-change: transform;
+  }
+  .mcard.held { cursor: grabbing; }
+  .mcard[data-depth="1"] { transform: translateY(22px) scale(.94); filter: brightness(.8); }
+  .mcard[data-depth="2"] { transform: translateY(42px) scale(.88); filter: brightness(.62); }
+  .mcard[data-depth="0"] { animation: xcard-up .3s var(--ease-out); }
+  .mcard-who { position: absolute; top: 20px; left: 20px; padding: 6px 12px; border-radius: var(--pill); background: rgba(8, 9, 14, .34);
+    font-size: 12.5px; font-weight: 750; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .mcard-text { font: 600 clamp(22px, 5.8vw, 27px)/1.16 var(--f-head); letter-spacing: -.035em; text-wrap: balance; overflow-wrap: break-word; }
+  .mcard-from { font-size: 13px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mcard.keep .xstamp.keep, .mcard.pass .xstamp.pass { opacity: 1; }
+  .mem-review .deck-actions { margin-top: 56px; }
+  .mem-scope { height: 54px; padding: 0 20px; }
+  .mem-empty { display: grid; justify-items: center; gap: 14px; padding: 36px 20px; border-radius: 28px; background: var(--bg-2); text-align: center; }
+  .mem-empty-t { font: 600 22px/1.1 var(--f-head); letter-spacing: -.03em; }
+  .mem-empty .muted { max-width: 40ch; }
+  .mem-kept { display: flex; flex-direction: column; gap: 18px; }
+  .mem-kept-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .mem-kept-head .mem-h { margin-bottom: 0; }
+  .mem-group { display: flex; flex-direction: column; gap: 8px; }
+  .mem-group-h { font-size: 14px; font-weight: 750; color: var(--fg-2); }
+  .mem-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .mem-row { display: flex; align-items: center; gap: 6px; padding: 10px 8px 10px 16px; border-radius: 16px; background: var(--bg-2); }
+  .mem-text { flex: 1; min-width: 0; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+  .mem-btn { flex: none; width: 32px; height: 32px; color: var(--fg-2); }
+  .mem-btn:hover { color: var(--fg); }
+  .mem-link { align-self: flex-start; margin-top: 6px; }
+  .mem-nudge { margin-top: 8px; }
+  @media (min-width: 1024px) {
+    .memory-main { max-width: 1060px; padding-inline: 48px; display: grid; grid-template-columns: 372px minmax(0, 1fr); column-gap: 76px; row-gap: 34px; align-items: start; }
+    .memory-main .page-title { grid-column: 1 / -1; justify-content: center; text-align: center; }
+    .memory-main .mem-review { grid-column: 1; }
+    .memory-main .mem-kept { grid-column: 2; }
+    .memory-main .mem-review:empty + .mem-kept, .memory-main .mem-review:has(.mem-empty) { grid-column: 1 / -1; max-width: 620px; width: 100%; margin-inline: auto; }
+  }
+
   /* ---- desktop: layouts made for a wide window, not a phone in the middle of one ------------------- */
   .create-side { display: contents; }
   .create > .create-title { order: -3; }
@@ -499,7 +551,7 @@
 
   /* ---- reduced motion: nothing drifts, turns or flies; states still read by brightness -------------- */
   @media (prefers-reduced-motion: reduce) {
-    .mat i, .orb.talk::before, .orb .orb-ring, .xcard[data-depth="0"], .gl-dim { animation: none; }
+    .mat i, .orb.talk::before, .orb .orb-ring, .xcard[data-depth="0"], .mcard[data-depth="0"], .gl-dim { animation: none; }
     .cap.now, .ic-title.arrive { animation: fade-in .2s ease both; }
     .pod-card:hover .sleeve { transform: none; }
   }

@@ -41,6 +41,7 @@ export async function cohostSetupView(root) {
     visibility: saved.visibility || "private",
     sharedWith: [],
     useIntro: true,      // open with your saved show intro, if you have one
+    useMemory: Boolean(saved.useMemory),   // this call only: hand over what's remembered, propose more after
     attachments: [],     // { name, kind, text }
     busy: "",
     // Long notes are sent ahead so the co-host's brief of them is ready by the call.
@@ -91,6 +92,9 @@ export async function cohostSetupView(root) {
       <div class="radio-cards mode-cards" role="radiogroup" aria-label="How your co-host plays it" data-modes></div>
       <p class="faint small mode-hint">You can switch during the call.</p>
 
+      ${session.options.memory ? html`<h2 class="create-h2">Memory <span class="faint small">optional</span></h2>
+      <div data-memory></div>` : ""}
+
       <h2 class="create-h2">Hard rules <span class="faint small">optional</span></h2>
       <div class="rules" data-rules></div>
 
@@ -140,6 +144,22 @@ export async function cohostSetupView(root) {
     missing: "Say what you want to learn, even just a few words.",
   };
   const wording = () => ({ roleplay: SCENE, educate: LESSON })[state.mode] || TOPIC;
+  let remembered = null;     // kept memories, once fetched
+  const renderMemory = () => {
+    if (!$("[data-memory]")) return;      // memory isn't switched on for this server
+    const name = state.host.name || "Your co-host";
+    const key = (state.host.name || "").trim().replace(/\s+/g, " ").toLowerCase();
+    const n = remembered ? remembered.filter((m) => m.scope === "shared" || m.host_key === key).length : 0;
+    const knows = !remembered ? "" : n ? `${name} has ${n} thing${n === 1 ? "" : "s"} to draw on.` : `${name} doesn't know anything about you yet.`;
+    setHtml($("[data-memory]"), html`
+      <button type="button" role="switch" class="radio-card research-card" data-toggle-memory aria-checked="${state.useMemory ? "true" : "false"}">
+        <span class="radio-dot" aria-hidden="true"></span>
+        <span class="radio-text"><span class="radio-title">${icon("heart", 16)} Use memory on this call</span>
+          <span class="radio-desc">${name} brings what they remember about you, and suggests new things to remember afterwards.
+            Nothing is kept until you approve it. ${knows}</span></span>
+      </button>
+      <a class="btn link mem-link" href="/memory" data-link>See what's remembered</a>`);
+  };
   const renderTopic = () => {
     $("#topic-label").textContent = wording().label;
     $("#topic").placeholder = wording().hint;
@@ -162,6 +182,7 @@ export async function cohostSetupView(root) {
     const h = state.host;
     setHtml($("[data-host]"), html`${personaCard({ ...h, name: h.name || "Your co-host", persona: h.persona || "Warm, quick-witted and curious about everything." })}
       <span class="pick-edit">${icon("edit", 18)}</span>`);
+    renderMemory();
   };
   const renderModes = () => setHtml($("[data-modes]"), html`${modes.map((m) => html`
     <button type="button" role="radio" class="radio-card mode-card" data-mode="${m.id}" aria-checked="${state.mode === m.id}" style="--tile:${m.accent}">
@@ -248,6 +269,9 @@ export async function cohostSetupView(root) {
       renderTopic();
       renderModes();
       tint();
+    } else if (t.closest("[data-toggle-memory]")) {
+      state.useMemory = !state.useMemory;
+      renderMemory();
     } else if (t.closest("[data-min]")) {
       state.minutes = Number(t.closest("[data-min]").dataset.min);
       renderLengths();
@@ -356,7 +380,7 @@ export async function cohostSetupView(root) {
     local.set("gp_cohost", {
       host: { ...state.host, context: "" },  // private notes aren't kept in the browser
       mode: state.mode, minutes: state.minutes, visibility: state.visibility, yourName, language,
-      rules: rules.get(),
+      rules: rules.get(), useMemory: state.useMemory,
     });
     btn.disabled = true;
     let mic;
@@ -372,7 +396,7 @@ export async function cohostSetupView(root) {
         request: {
           host: state.host, mode: state.mode, topic, notes: collectNotes().slice(0, notesMax), minutes: state.minutes,
           notes_names: state.attachments.map((a) => a.name).slice(0, 20), your_name: yourName, language,
-          hard_rules: rules.get(),
+          hard_rules: rules.get(), use_memory: Boolean(session.options.memory && state.useMemory),
         },
         visibility: state.visibility,
         shared_with: state.visibility === "private" ? state.sharedWith : [],
@@ -415,6 +439,8 @@ export async function cohostSetupView(root) {
   renderVisibility();
   renderIntro();
   renderTopic();
+  renderMemory();
+  if (session.options.memory) api.memories().then((d) => { remembered = d.kept || []; renderMemory(); }).catch(() => {});
   $("#topic").focus();
   return { unmount() { offHead(); } };
 }

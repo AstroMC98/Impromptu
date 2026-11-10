@@ -12,6 +12,7 @@ import { cohostSetupView } from "./views/cohost-setup.js";
 import { connectionsView, inviteView } from "./views/connections.js";
 import { createView } from "./views/create.js";
 import { exploreView } from "./views/explore.js";
+import { memoryView } from "./views/memory.js";
 import { creatorView } from "./views/creator.js";
 import { introView } from "./views/intro.js";
 import { libraryPageView, libraryView, youView } from "./views/library.js";
@@ -42,6 +43,7 @@ async function boot() {
   start([
     [/^\/$/, libraryView],
     [/^\/explore$/, exploreView],
+    [/^\/memory$/, memoryView],
     [/^\/discover$/, libraryView],
     [/^\/following$/, libraryView],
     [/^\/library$/, libraryPageView],

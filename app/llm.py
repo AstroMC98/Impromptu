@@ -394,6 +394,16 @@ class Gemini:
         async with self.client.aio.live.connect(model=self.settings.cohost_model, config=config) as session:
             yield CohostLink(session)
 
+    async def find_memories(self, turns: list[dict], you: str, host: str, known: list[str], limit: int) -> list[dict]:
+        """What a co-host should remember about you from a call: [{text, scope}] (memory.py)."""
+        data = await self._json_call(
+            system=prompts.MEMORY_SYSTEM.format(user=you, host=host, limit=limit),
+            user=prompts.memory_input(turns, known),
+            schema=prompts.memory_schema(),
+        )
+        found = data.get("memories")
+        return [m for m in found if isinstance(m, dict) and m.get("text")] if isinstance(found, list) else []
+
     async def edit_cohost(self, turns: list[dict], you: str, host: str, minutes: float) -> EditPlan:
         """Title, show notes, chapters and what to cut, for a recorded co-host call."""
         data = await self._json_call(

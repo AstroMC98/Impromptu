@@ -40,7 +40,7 @@ import struct
 import time
 from typing import Callable
 
-from . import prompts
+from . import memory, prompts
 from .audio import Mp3Writer
 from .catalog import COHOST_MODES_BY_ID, VOICE_GENDER, VOICES, language_code, pick_voice
 from .config import Settings
@@ -120,6 +120,7 @@ class CohostSession:
         on_closed: Callable[[str], None],
         music: Library | None = None,
         index: NotesIndex | None = None,
+        memories: list[str] | None = None,
     ):
         """notes: what the co-host is given of your notes (all of them, or a brief of
         long ones); index: the full notes to search with check_notes, when they're long.
@@ -131,6 +132,7 @@ class CohostSession:
         self.you = you
         self.notes = notes
         self.index = index
+        self.memories = memories or []      # what the co-host remembers about you (memory.py)
         # How you're heard: in the call's language (the transcriber otherwise guesses it
         # from the audio, and an accent can throw it), with the names and terms of the
         # call in its vocabulary. People's names lead; then the topic's and the notes'.
@@ -507,7 +509,26 @@ class CohostSession:
                       "title": fields["title"]}
         self._set_state("saved")
         self._send({"type": "saved", **self.saved})
+        if self.request.use_memory and reason != "shutdown":
+            _spawn(self._remember(edit.editor_turns(self.you, self.host.name), fields["title"]))
         log.info("call %s saved (%s): %.0fs call, %.0fs episode", self.id, reason, call_s, duration)
+
+    async def _remember(self, turns: list[dict], title: str) -> None:
+        """After the episode is saved: propose what to remember from the call. They wait on
+        the Memory page for a yes or no; a failure here costs nothing but the proposals."""
+        uid = self.doc.get("owner_uid") or ""
+        try:
+            known = [m["text"] for m in await memory.all_items(self.store, uid)]
+            found = await asyncio.wait_for(
+                self.gemini.find_memories(turns, self.you, self.host.name, known, memory.PER_CALL),
+                timeout=self.settings.cohost_edit_timeout_seconds)
+            added = await memory.propose(self.store, uid, found, host=self.host.name, show_id=self.id,
+                                         show_title=title)
+            if added:
+                self._send({"type": "memories", "count": added})
+            log.info("call %s: %d memories proposed", self.id, added)
+        except Exception as exc:
+            log.warning("call %s: no memories proposed (%s)", self.id, exc)
 
     async def _refund(self, call_s: float) -> int:
         """Unused minutes back, once, however saving goes. Billed by the call's length
@@ -558,7 +579,8 @@ class CohostSession:
 
     def _system(self) -> str:
         return prompts.cohost_system(self.request.model_copy(update={"mode": self.mode}), self.host,
-                                     self.you, self.notes, lookup=self.index is not None)
+                                     self.you, self.notes, lookup=self.index is not None,
+                                     memories=self.memories)
 
     async def _send_text(self, text: str) -> None:
         link = self._link

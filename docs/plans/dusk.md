@@ -61,11 +61,33 @@ pod. Right keeps a card, left passes, a tap opens it.
 - What you keep is stored in this browser only (`localStorage`, key `gp_kept`), up to 12.
 - Passing loses nothing: the deck can be dealt again.
 
-## Not built yet
+## Desktop
 
-Planned and mocked, held for a second pass: host notebooks and memory (with the swipe to
-approve), the merged cast of house hosts, hard rules, and roleplay as a fourth co-host
-mode.
+From 1024 px the layouts change, in one block near the end of `dusk.css`. Signed-out Home
+puts the pitch on the left and the deck on the right; signed-in Home puts your pods beside
+four templates; Explore shows the card as a cover with a detail panel and takes the arrow
+keys from anywhere on the page; New pod keeps the cover preview and Go live fixed beside
+the form (`aside.create-side`, which is `display: contents` on phones). Phone layouts are
+not affected.
+
+## Second pass
+
+| Feature | Where | State |
+|---|---|---|
+| Hard rules | `hard_rules` on a pod's or call's request; `prompts.hard_rules` closes every system prompt; editor in `static/js/rules.js` | built |
+| Roleplay and Educate | two more co-host modes in `catalog.COHOST_MODES`; the setup page asks for a scene or for something to learn | built |
+| Memory | `app/memory.py`, `/api/memories`, the Memory page (`static/js/views/memory.js`), "Use memory" on the co-host setup page | first slice built |
+| Notebooks, caller memory, the merged cast | | not built |
+
+Memory, as built: a call started with "Use memory" hands the co-host what you have
+approved for them (their own memories, then the shared ones) and, once the episode is
+saved, asks the model what is worth remembering. Those proposals wait on the Memory page:
+right keeps one, left forgets it, and a button shares it with every co-host. Memories are
+saved items of kind `memories`, so they need no new store code. The whole list fits in the
+prompt, so there is no search yet.
+
+Memory is on with local storage and off on GCP until `MEMORY_ENABLED=true`
+(`settings.memory_on`), so a deploy does not start writing memories to Firestore.
 
 ## Checking it
 

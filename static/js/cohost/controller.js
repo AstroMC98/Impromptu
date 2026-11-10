@@ -169,6 +169,9 @@ export class CallController {
         this.saved = e;
         this._setState("saved");
         break;
+      case "memories":
+        this.memories = e.count || 0;      // proposed after the call, waiting on the Memory page
+        break;
       case "ended":
         this.ended = e;
         this._setState("ended");

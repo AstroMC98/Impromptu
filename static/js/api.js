@@ -49,6 +49,11 @@ export const api = {
   create: (kind, item) => call("POST", `/api/${kind}`, { json: item }),
   update: (kind, itemId, item) => call("PUT", `/api/${kind}/${id(itemId)}`, { json: item }),
   remove: (kind, itemId) => call("DELETE", `/api/${kind}/${id(itemId)}`),
+  // memory: what your co-hosts remember about you
+  memories: () => call("GET", "/api/memories"),
+  addMemory: (item) => call("POST", "/api/memories", { json: item }),
+  editMemory: (memoryId, fields) => call("PUT", `/api/memories/${id(memoryId)}`, { json: fields }),
+  forgetMemory: (memoryId) => call("DELETE", `/api/memories/${id(memoryId)}`),
   // connections
   connections: () => call("GET", "/api/connections"),
   connect: (target) => call("POST", "/api/connections", { json: target }),

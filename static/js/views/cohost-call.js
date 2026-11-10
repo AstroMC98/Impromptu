@@ -175,6 +175,7 @@ export async function cohostCallView(root, { params }) {
         <p class="tune-title">${ctl.saved.title || "Your episode is ready"}</p>
         <p class="muted">${fmtTime(ctl.saved.duration)} episode${facts.length ? ` · ${facts.join(" · ")}` : ""}</p>
         <button class="btn white big block" type="button" data-action="open">${icon("play", 18)}Listen to it</button>
+        ${ctl.memories ? html`<a class="btn quiet block mem-nudge" href="/memory" data-link>${icon("heart", 16, 2.2)}${ctl.memories} thing${ctl.memories === 1 ? "" : "s"} to remember? Review</a>` : ""}
       </div>`;
     }
     if (ctl.state === "ended") {

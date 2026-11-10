@@ -410,6 +410,9 @@ class CohostRequest(BaseModel):
     your_name: str = Field(default="", max_length=40)   # blank = your account name
     minutes: Literal[5, 10, 15] = 10
     language: str = Field(default="English", max_length=60)
+    # Memory, for this call only: the co-host is given what you've approved for them to
+    # remember, and proposes new memories afterwards for you to approve (memory.py).
+    use_memory: bool = False
     # Hard rules for the call: see ShowRequest.hard_rules.
     hard_rules: list[str] = Field(default_factory=list, max_length=40)
 
