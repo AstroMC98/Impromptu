@@ -82,8 +82,11 @@ def new_item(text: str, *, status: str, scope: str, host: str, show_id: str = ""
     }
 
 
+_AUDIENCE = {"private": 0, "connections": 1, "public": 2}
+
+
 async def propose_callers(store: Store, uid: str, callers: dict[str, dict], *, hosts: list[str], show_id: str,
-                          show_title: str) -> int:
+                          show_title: str, visibility: str = "private") -> int:
     """After a live pod: one proposal per signed-in caller, for that pod's hosts.
     callers: {caller_uid: {"name": ..., "said": [what they asked]}}."""
     names = [" ".join(h.split())[:40] for h in hosts if h and h.strip()]
@@ -106,7 +109,8 @@ async def propose_callers(store: Store, uid: str, callers: dict[str, dict], *, h
         item = new_item(text, status="pending", scope="host", host=" and ".join(names), show_id=show_id,
                         show_title=show_title)
         item.update({"scope": "caller", "caller_uid": caller_uid, "caller_name": name,
-                     "host_keys": [host_key(n) for n in names]})
+                     "host_keys": [host_key(n) for n in names],
+                     "visibility": visibility if visibility in _AUDIENCE else "private"})
         await store.put_item(uid, KIND, item)
         known.append(text)
         added += 1
@@ -118,11 +122,15 @@ async def kept_callers(store: Store, uid: str) -> list[dict]:
     return [m for m in await all_items(store, uid) if m.get("status") == "kept" and m.get("scope") == "caller"]
 
 
-def returning(kept: list[dict], caller_uid: str, hosts: list[str]) -> str:
-    """What this show's hosts remember about a caller, or ""."""
+def returning(kept: list[dict], caller_uid: str, hosts: list[str], visibility: str = "public") -> str:
+    """What this show's hosts remember about a caller, or "". A memory is only used on a
+    show with an audience no wider than the one it came from: what someone asked on a
+    private pod is never brought to a public one."""
     keys = {host_key(h) for h in hosts if h}
+    here = _AUDIENCE.get(visibility, 2)
     mine = [m["text"] for m in kept
-            if m.get("caller_uid") == caller_uid and keys & set(m.get("host_keys", []))]
+            if m.get("caller_uid") == caller_uid and keys & set(m.get("host_keys", []))
+            and _AUDIENCE.get(m.get("visibility", "private"), 0) >= here]
     return " ".join(mine[:CALLER_NOTES])
 
 

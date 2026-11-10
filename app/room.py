@@ -430,7 +430,8 @@ class ShowRoom:
         text = str(msg.get("text", ""))
         returning = ""
         if self.remember_callers and conn.uid and conn.role != "producer":
-            returning = memory.returning(self._known_callers, conn.uid, self._host_names())
+            returning = memory.returning(self._known_callers, conn.uid, self._host_names(),
+                                         self.doc.get("visibility") or "public")
         made, err = self.runner.add_comment(
             conn.name, text, conn.role, client_id=str(msg.get("client_id", "")), returning=returning,
         )
@@ -589,7 +590,8 @@ class ShowRoom:
         try:
             added = await memory.propose_callers(
                 self.store, self.doc.get("owner_uid") or "", self.callers, hosts=self._host_names(),
-                show_id=self.id, show_title=self.doc.get("title") or "a pod")
+                show_id=self.id, show_title=self.doc.get("title") or "a pod",
+                visibility=self.doc.get("visibility") or "private")
             log.info("show %s: %d caller memories proposed", self.id, added)
         except Exception:
             log.exception("show %s: couldn't propose caller memories", self.id)

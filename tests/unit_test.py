@@ -2136,7 +2136,11 @@ def _():
         assert await memory.kept_callers(store, "u1") == [] and await memory.recall(store, "u1", "Theo") == []
         await store.put_item("u1", memory.KIND, {**item, "status": "kept"})
         kept = await memory.kept_callers(store, "u1")
-        assert "Jo called in" in memory.returning(kept, "jo-uid", ["Ruby", "Someone new"])
+        assert "Jo called in" in memory.returning(kept, "jo-uid", ["Ruby", "Someone new"], "private")
+        assert memory.returning(kept, "jo-uid", ["Ruby"], "public") == ""        # asked on a private pod: stays there
+        await store.put_item("u1", memory.KIND, {**item, "status": "kept", "visibility": "public"})
+        kept = await memory.kept_callers(store, "u1")
+        assert "Jo called in" in memory.returning(kept, "jo-uid", ["Ruby"], "public")
         assert memory.returning(kept, "jo-uid", ["Zoe Park"]) == "" and memory.returning(kept, "other", ["Ruby"]) == ""
         assert await memory.recall(store, "u1", "Theo") == []        # a caller memory is not about you
         many = {f"uid-{i}": {"name": f"Caller {i}", "said": [f"Question number {i}?"]} for i in range(8)}
