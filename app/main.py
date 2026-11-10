@@ -446,6 +446,7 @@ def _list_item(d: dict) -> dict:
         "status": "live" if live else d.get("status"),
         "vibe": d.get("vibe"),
         "style_label": d.get("style_label", ""),
+        "tagline": d.get("tagline", ""),
         "accent": d.get("accent"),
         "created_at": d.get("created_at"),
         "duration_s": d.get("duration_s", 0),

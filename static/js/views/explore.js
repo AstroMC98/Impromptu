@@ -28,7 +28,9 @@ const podCard = (s) => ({
   live: s.status === "live",
   kind: s.status === "live" ? "Live now" : s.duration_s ? `Pod, ${fmtTime(s.duration_s)}` : "Pod",
   by: [joinNames((s.hosts || []).filter(Boolean)), s.style_label].filter(Boolean).join(" · "),
-  blurb: s.owner_name ? `Made by ${s.owner_name}` : "",
+  blurb: s.tagline || "",
+  made: s.owner_name ? `Made by ${s.owner_name}` : "",
+  tags: (s.tags || []).slice(0, 3),
   open: s.status === "live" ? "Tune in" : "Listen",
   href: `/show/${s.id}`,
 });
@@ -79,7 +81,7 @@ export function mountDeck(host, { limit = 14 } = {}) {
       <span class="xcard-text">
         <h3>${c.title}</h3>
         ${c.by ? html`<p class="xcard-by">${c.by}</p>` : ""}
-        ${c.blurb ? html`<p class="xcard-blurb">${c.blurb}</p>` : ""}
+        ${c.blurb || c.made ? html`<p class="xcard-blurb">${c.blurb || c.made}</p>` : ""}
       </span>
     </article>`;
 
@@ -109,8 +111,8 @@ export function mountDeck(host, { limit = 14 } = {}) {
     }
     setHtml(host, html`
       <p class="deck-hint" aria-hidden="true">
-        <span class="dh pass"><b>&larr;</b> Swipe left to pass</span>
-        <span class="dh keep">Swipe right to keep <b>&rarr;</b></span>
+        <span class="dh pass"><b>&larr;</b> <span class="by-touch">Swipe left</span><span class="by-keys">Left arrow</span> to pass</span>
+        <span class="dh keep"><span class="by-touch">Swipe right</span><span class="by-keys">Right arrow</span> to keep <b>&rarr;</b></span>
       </p>
       <div class="deck" tabindex="0" role="group" aria-roledescription="deck of cards"
         aria-label="${c.kind}: ${c.title}. Card ${at + 1} of ${cards.length}. Right arrow keeps it, left arrow passes, Enter opens it.">
@@ -122,6 +124,21 @@ export function mountDeck(host, { limit = 14 } = {}) {
         <button class="round-btn deck-btn" type="button" data-swipe="keep" aria-label="Keep for later">${icon("heart", 22, 2.2)}<span class="deck-lab" aria-hidden="true">Keep</span></button>
       </div>
       <p class="deck-note">${kept.length ? "Tap a card to open it." : "Kept cards are saved in a list below. Tap a card to open it."}</p>
+      <aside class="deck-info">
+        <span class="di-kind ${c.live ? "live" : ""}">${c.live ? html`<span class="dot"></span>` : ""}${c.kind}</span>
+        <h2 class="di-title">${c.title}</h2>
+        ${c.by ? html`<p class="di-by">${c.by}</p>` : ""}
+        ${c.blurb ? html`<p class="di-blurb">${c.blurb}</p>` : ""}
+        ${c.tags?.length ? html`<p class="di-tags">${c.tags.map((t) => html`<span class="chip">#${t}</span>`)}</p>` : ""}
+        ${c.made ? html`<p class="di-made">${c.made}</p>` : ""}
+        <div class="di-actions">
+          <a class="btn white big" href="${c.href}" data-link>${icon(c.open === "Make it" ? "plus" : "play", 18, 2.4)}${c.open}</a>
+          <button class="btn quiet" type="button" data-swipe="keep">${icon("heart", 16, 2.2)}Keep</button>
+          <button class="btn quiet" type="button" data-swipe="pass">${icon("close", 16, 2.4)}Pass</button>
+        </div>
+        <p class="di-keys"><kbd>&larr;</kbd> pass <kbd>&rarr;</kbd> keep <kbd>Enter</kbd> open</p>
+        <p class="di-count">Card ${at + 1} of ${cards.length}</p>
+      </aside>
       <p class="sr-only" role="status" data-said></p>
       ${tray()}`);
     bindDrag(host.querySelector('.xcard[data-depth="0"]'));
@@ -254,8 +271,23 @@ export function mountDeck(host, { limit = 14 } = {}) {
     else return;
     e.preventDefault();
   };
+  // The arrows work from anywhere on the page, not only with the deck focused, unless you
+  // are typing or a sheet is open.
+  const onPageKey = (e) => {
+    const t = e.target;
+    if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || !host.isConnected) return;
+    if (t.closest?.(".deck, input, textarea, select, [contenteditable], dialog, [role='dialog'], .sheet")) return;
+    if (!host.querySelector(".deck")) return;
+    const r = host.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > innerHeight) return;        // the deck is off screen
+    if (e.key === "ArrowRight") swipe("keep");
+    else if (e.key === "ArrowLeft") swipe("pass");
+    else return;
+    e.preventDefault();
+  };
   host.addEventListener("click", onClick);
   host.addEventListener("keydown", onKey);
+  document.addEventListener("keydown", onPageKey);
 
   api.listShows("public").catch(() => ({ shows: [] })).then(({ shows }) => {
     cards = deal(shows || [], session.options.templates || [], limit);
@@ -268,6 +300,7 @@ export function mountDeck(host, { limit = 14 } = {}) {
       watcher?.disconnect();
       host.removeEventListener("click", onClick);
       host.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onPageKey);
     },
   };
 }

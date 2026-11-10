@@ -55,7 +55,6 @@ export async function createView(root, { query }) {
         <p class="muted">Start with anything. Add more while it's live.</p>
         <a class="memo-link" href="/memo" data-link>${icon("mic", 16)}Got a rough voice memo? Turn it into a finished episode</a>
       </div>
-      <div class="preview-sleeve" data-preview aria-live="polite" aria-label="Your pod so far"></div>
       <div data-free></div>
 
       <section class="tpl-section" aria-labelledby="tpl-h">
@@ -116,11 +115,14 @@ export async function createView(root, { query }) {
       </details>
 
       <p class="error" role="alert" data-error></p>
-      <div class="go-bar">
-        <p class="cost" data-cost></p>
-        <button class="btn white big block go" type="button" data-go><span class="rec-dot" aria-hidden="true"></span>Go live</button>
-        <button class="btn link" type="button" data-draft>Save for later</button>
-      </div>
+      <aside class="create-side" aria-label="Your pod">
+        <div class="preview-sleeve" data-preview aria-live="polite" aria-label="Your pod so far"></div>
+        <div class="go-bar">
+          <p class="cost" data-cost></p>
+          <button class="btn white big block go" type="button" data-go><span class="rec-dot" aria-hidden="true"></span>Go live</button>
+          <button class="btn link" type="button" data-draft>Save for later</button>
+        </div>
+      </aside>
     </main>`);
   root.append(el);
   const offHead = bindHeader(el);

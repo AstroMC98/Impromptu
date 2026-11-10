@@ -404,6 +404,99 @@
   }
   .kept-item .sleeve.sm { width: 36px; height: 36px; border-radius: 50%; }
 
+  /* ---- desktop: layouts made for a wide window, not a phone in the middle of one ------------------- */
+  .create-side { display: contents; }
+  .create > .create-title { order: -3; }
+  .create .preview-sleeve { order: -2; }
+  .deck-info, .by-keys { display: none; }
+  @media (hover: hover) and (pointer: fine) { .by-touch { display: none; } .by-keys { display: inline; } }
+
+  @media (min-width: 1024px) {
+    .home-main, .explore-main, .create { padding-inline: 48px; }
+
+    /* Home, signed out: say it on the left, hear it on the right */
+    .home-main:has(.home-hero.signed-out) {
+      max-width: 1180px; display: grid; grid-template-columns: minmax(0, 1fr) 372px; column-gap: 72px; row-gap: 56px;
+      align-items: center; padding-top: 24px;
+    }
+    .home-main:has(.home-hero.signed-out) > * { grid-column: 1 / -1; min-width: 0; }
+    .home-main:has(.home-hero.signed-out) > .home-hero { grid-column: 1; align-items: flex-start; text-align: left; gap: 26px; }
+    .home-main:has(.home-hero.signed-out) > .home-deck { grid-column: 2; }
+    .home-hero.signed-out h1 { width: auto; max-width: none; font-size: clamp(40px, 3.75vw, 58px); }
+    .home-hero.signed-out h1 > span { display: block; }
+    .home-hero.signed-out .muted { font-size: 19px; }
+    .home-hero.signed-out .row { justify-content: flex-start; }
+    .home-deck .shelf-head { justify-content: flex-start; }
+    .home-deck .deck, .home-deck .deck-hint { width: min(100%, 340px); }
+    .home-deck .deck-actions { margin-top: 40px; }
+
+    /* Home, signed in: the composer across the top, your pods beside the templates */
+    .home-main:has(.home-hero:not(.signed-out)) {
+      max-width: 1180px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 56px; row-gap: 52px; align-items: start;
+    }
+    .home-main:has(.home-hero:not(.signed-out)) > * { grid-column: 1 / -1; min-width: 0; }
+    .home-main:has(.home-hero:not(.signed-out)) .composer { align-self: center; width: min(100%, 820px); }
+    .home-main:has(.home-hero:not(.signed-out)) > .shelf[aria-labelledby="mine-h"] { grid-column: 1; }
+    .home-main:has(.home-hero:not(.signed-out)) > .shelf[aria-labelledby="tpl-h"] { grid-column: 2; }
+    .home-main:has(.home-hero:not(.signed-out)) > .shelf[aria-labelledby="mine-h"]:last-child { grid-column: 1 / -1; }
+    .shelf[aria-labelledby="tpl-h"] .tpl-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; overflow: visible; padding: 0; }
+    .shelf[aria-labelledby="tpl-h"] .tpl-row .tpl { width: auto; }
+    .shelf[aria-labelledby="tpl-h"] .tpl-row .tpl:nth-child(n+5) { display: none; }
+    .home-main:has(.home-hero.signed-out) .shelf[aria-labelledby="tpl-h"] .tpl-row { grid-template-columns: repeat(4, 1fr); }
+
+    /* Explore: the card as a cover on the left, what it is and what to do on the right */
+    .explore-main { max-width: 1060px; }
+    .explore-main .page-title { margin-bottom: 34px; }
+    .explore-main .deck-wrap:has(> .deck) {
+      display: grid; grid-template-columns: 372px minmax(0, 1fr); column-gap: 76px; align-items: start; justify-items: start;
+    }
+    .explore-main .deck-wrap > .deck-hint { display: none; }
+    .explore-main .deck-wrap > .deck { grid-column: 1; grid-row: 1; }
+    .explore-main .deck-wrap > .deck { margin-bottom: 60px; }
+    .explore-main .deck-wrap > .deck-actions, .explore-main .deck-wrap > .deck-note { display: none; }
+    .explore-main .deck-wrap > .kept { grid-column: 1 / -1; }
+    .explore-main .xcard-by, .explore-main .xcard-blurb { display: none; }
+    .explore-main .deck-info {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 14px; grid-column: 2; grid-row: 1;
+      align-self: center; text-align: left; padding-bottom: 60px;
+    }
+    .di-kind { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: var(--pill); background: var(--bg-2);
+      font-size: 13px; font-weight: 750; color: var(--fg-2); }
+    .di-kind.live { background: var(--tally); color: #fff; }
+    .di-kind .dot { width: 7px; height: 7px; border-radius: 50%; background: #fff; }
+    .di-title { font: 600 clamp(34px, 3.5vw, 50px)/1.04 var(--f-head); letter-spacing: -.045em; text-wrap: balance; }
+    .di-by { font-size: 17px; font-weight: 700; }
+    .di-blurb { font-size: 17px; line-height: 1.5; color: var(--fg-2); max-width: 46ch; }
+    .di-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .di-made { font-size: 14px; color: var(--fg-3); }
+    .di-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .di-keys, .di-count { font-size: 13px; color: var(--fg-3); }
+    .di-keys { margin-top: 6px; }
+    .di-keys kbd { display: inline-block; min-width: 26px; margin: 0 4px 0 10px; padding: 4px 8px; border-radius: 8px; background: var(--bg-2);
+      font: 700 12px/1 var(--f-body, inherit); color: var(--fg); text-align: center; }
+    .di-keys kbd:first-child { margin-left: 0; }
+
+    /* Library and the other wide pages use the window; the replay's title card sits in the middle */
+    .page.wide { max-width: 1280px; }
+    .pl-captions:has(.intro-card) { left: 8%; right: 8%; }
+
+    /* New pod: the form on the left; the pod so far and Go live stay beside it */
+    .create-page { padding-bottom: 64px; }
+    .create { max-width: 1120px; display: grid; grid-template-columns: minmax(0, 1fr) 340px; column-gap: 64px; align-items: start; }
+    .create > * { grid-column: 1; min-width: 0; }
+    .create > .create-side {
+      display: flex; flex-direction: column; gap: 18px; grid-column: 2; grid-row: 1 / span 60;
+      position: sticky; top: 88px; margin-top: 12px;
+    }
+    .create-side .preview-sleeve { position: static; margin: 0; flex-direction: column; align-items: stretch; gap: 14px; padding: 12px 12px 18px; border-radius: 28px; }
+    .create-side .preview-sleeve .sleeve.md { width: 100%; height: auto; aspect-ratio: 1; border-radius: 18px; }
+    .create-side .pv-text { padding: 0 8px; }
+    .create-side .pv-text strong { font: 600 22px/1.1 var(--f-head); letter-spacing: -.03em; }
+    .create-side .go-bar { position: static; padding: 0; background: none; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; align-items: stretch; gap: 6px; }
+    .create-side .go-bar .cost { text-align: center; }
+    .create-side .go-bar .btn.link { align-self: center; }
+  }
+
   /* ---- reduced motion: nothing drifts, turns or flies; states still read by brightness -------------- */
   @media (prefers-reduced-motion: reduce) {
     .mat i, .orb.talk::before, .orb .orb-ring, .xcard[data-depth="0"], .gl-dim { animation: none; }
