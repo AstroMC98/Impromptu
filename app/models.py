@@ -26,6 +26,20 @@ class HostRequest(BaseModel):
     context: str = Field(default="", max_length=NOTES_CHARS)
 
 
+MAX_RULES = 8
+RULE_CHARS = 240
+
+
+def _clean_rules(rules: list[str]) -> list[str]:
+    """Hard rules as given: trimmed, blanks and repeats dropped, each cut to RULE_CHARS."""
+    out: list[str] = []
+    for r in rules:
+        r = " ".join(str(r).split())[:RULE_CHARS]
+        if r and r.casefold() not in (o.casefold() for o in out):
+            out.append(r)
+    return out[:MAX_RULES]
+
+
 class OutlineBeat(BaseModel):
     """A beat the planner must keep (a briefing's run of show), rather than invent."""
     title: str = Field(min_length=1, max_length=80)
@@ -60,6 +74,14 @@ class ShowRequest(BaseModel):
     # the hosts welcome listeners to the show by name and work in its intro line.
     show_name: str = Field(default="", max_length=60)
     intro_line: str = Field(default="", max_length=200)
+    # Hard rules: lines the creator says the hosts must never cross, whatever the style,
+    # a persona or a listener asks for. Private to the creator (main._public_request).
+    hard_rules: list[str] = Field(default_factory=list, max_length=40)
+
+    @field_validator("hard_rules")
+    @classmethod
+    def _rules(cls, v: list[str]) -> list[str]:
+        return _clean_rules(v)
 
     @field_validator("language")
     @classmethod
@@ -374,7 +396,7 @@ class SegmentContext(BaseModel):
 
 # ---- Co-hosting: you talk live with an AI co-host (see cohost.py) ------------
 
-CohostMode = Literal["banter", "interview", "debate"]
+CohostMode = Literal["banter", "interview", "debate", "roleplay"]
 
 
 class CohostRequest(BaseModel):
@@ -388,6 +410,13 @@ class CohostRequest(BaseModel):
     your_name: str = Field(default="", max_length=40)   # blank = your account name
     minutes: Literal[5, 10, 15] = 10
     language: str = Field(default="English", max_length=60)
+    # Hard rules for the call: see ShowRequest.hard_rules.
+    hard_rules: list[str] = Field(default_factory=list, max_length=40)
+
+    @field_validator("hard_rules")
+    @classmethod
+    def _rules(cls, v: list[str]) -> list[str]:
+        return _clean_rules(v)
 
     @field_validator("language")
     @classmethod

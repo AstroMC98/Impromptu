@@ -9,6 +9,7 @@ import { icon, KIND_ICON } from "../icons.js";
 import { bindPersonaForm, fillPersona, GENDER_LABEL, personaFields, readPersona } from "../personas.js";
 import { albumChips, introRow, lengthChip, newAlbumSheet, shareWith, visibilityCards } from "../pod-options.js";
 import { navigate } from "../router.js";
+import { mountRules } from "../rules.js";
 import { loginPath, session } from "../session.js";
 import { vibeTile } from "../sheets.js";
 import { applyAccent, gelFor, initial } from "../theme.js";
@@ -99,6 +100,9 @@ export async function createView(root, { query }) {
       <h2 class="create-h2">Intro</h2>
       <div data-intro></div>
 
+      <h2 class="create-h2">Hard rules <span class="faint small">optional</span></h2>
+      <div class="rules" data-rules></div>
+
       <h2 class="create-h2">Who can listen?</h2>
       <div class="radio-cards" role="radiogroup" aria-label="Who can listen" data-visibility></div>
       <div data-share-with></div>
@@ -127,6 +131,7 @@ export async function createView(root, { query }) {
   root.append(el);
   const offHead = bindHeader(el);
   const $ = (s) => el.querySelector(s);
+  const rules = mountRules($("[data-rules]"), saved.rules);
   const textArea = $("#about-text");
   const own = $("#own-style");
 
@@ -465,12 +470,14 @@ export async function createView(root, { query }) {
     const request = {
       source, style: pick.style, vibe: pick.vibe, style_label: pick.label, accent: pick.accent,
       hosts: state.hosts, minutes: state.minutes, language, research: state.research,
+      hard_rules: rules.get(),
       source_names: state.attachments.map((a) => a.name).slice(0, 20),
     };
     local.set("gp_create", {
       vibe: state.pick.kind === "preset" ? state.pick.id : "gossip",
       hosts: state.hosts.map((h) => ({ ...h, context: "" })),  // private notes aren't kept in the browser
       minutes: state.minutes, language, visibility: state.visibility, research: state.research,
+      rules: rules.get(),
     });
     btn.disabled = true;
     if (live) await unlockAudio();  // inside the click, so the pod can start playing on its own

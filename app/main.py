@@ -295,7 +295,8 @@ def _public_request(req: dict) -> dict:
     the memo)."""
     def public(h: dict) -> dict:
         return {**{k: v for k, v in h.items() if k != "context"}, "has_notes": bool(h.get("context"))}
-    out = {**{k: v for k, v in req.items() if k != "direction"}, "hosts": [public(h) for h in req.get("hosts", [])]}
+    out = {**{k: v for k, v in req.items() if k not in ("direction", "hard_rules")},
+           "hosts": [public(h) for h in req.get("hosts", [])], "has_rules": bool(req.get("hard_rules"))}
     if isinstance(req.get("host"), dict):   # a co-hosted call's co-host
         out["host"] = public(req["host"])
     return out

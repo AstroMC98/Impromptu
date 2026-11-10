@@ -1998,6 +1998,34 @@ def _():
     assert "[p0] Um" in text and "[p1]" not in text and "T1 Nova (cut off): Well I" in text
 
 
+@check("hard rules: cleaned, last in every prompt, and kept from everyone but the creator")
+def _():
+    from app.main import _public_request
+    given = ["  Never   swear. ", "", "never swear.", "Don't name my employer."] + [f"rule {i}" for i in range(20)]
+    req = ShowRequest(source="x", style="calm", hosts=[{"name": "A"}], hard_rules=given)
+    assert req.hard_rules[:2] == ["Never swear.", "Don't name my employer."] and len(req.hard_rules) == 8
+    planner = prompts.planner_system(req, "SOURCE")
+    assert planner.rstrip().endswith("8. rule 5") and "HARD RULES" in planner and "1. Never swear." in planner
+    assert "HARD RULES" not in prompts.planner_system(ShowRequest(source="x", style="calm", hosts=[{"name": "A"}]), "SOURCE")
+    co = CohostRequest(host=HostRequest(name="Nova"), topic="Bread", hard_rules=["Never give medical advice."])
+    system = prompts.cohost_system(co, cast_cohost(co.host), "Marc", "NOTES")
+    assert system.rstrip().endswith("1. Never give medical advice.") and system.index("HARD RULES") > system.index("NOTES")
+    public = _public_request(req.model_dump())
+    assert "hard_rules" not in public and public["has_rules"] is True
+    assert _public_request(co.model_dump())["has_rules"] is True and _public_request({"hosts": []})["has_rules"] is False
+
+
+@check("co-host: roleplay is a mode, with a scene-setting opening of its own")
+def _():
+    req = CohostRequest(host=HostRequest(name="Nova"), mode="roleplay", topic="A job interview. You're the hiring manager.")
+    system = prompts.cohost_system(req, cast_cohost(req.host), "Marc", "")
+    assert "MODE: Roleplay." in system and "pause the scene" in system
+    opening = prompts.cohost_opening("Marc", 10, mode="roleplay")
+    assert "who plays whom" in opening and "hand it to Marc with a question" not in opening
+    assert "hand it to Marc with a question" in prompts.cohost_opening("Marc", 10)
+    assert "Roleplay." in prompts.cohost_mode_switch("roleplay")
+
+
 def main() -> int:
     width = max(len(n) for n, _, _ in RESULTS)
     for name, ok, err in RESULTS:

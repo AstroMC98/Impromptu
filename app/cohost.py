@@ -257,7 +257,8 @@ class CohostSession:
                         self.started = time.monotonic()
                         intro = self.doc.get("intro") or {}
                         await self._send_text(prompts.cohost_opening(
-                            self.you, self.request.minutes, intro.get("show_name", ""), intro.get("intro_line", "")))
+                            self.you, self.request.minutes, intro.get("show_name", ""), intro.get("intro_line", ""),
+                            mode=self.mode))
                     elif fresh:
                         await self._send_text(prompts.cohost_resume(self.you, self._recap()))
                     self._set_state("live")

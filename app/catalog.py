@@ -364,6 +364,21 @@ COHOST_MODES = [
         "back with reasons, examples and evidence, press on weak spots, and concede a genuinely good "
         "point before coming back with a better one. Stay civil, sharp and fun, and on the topic.",
     },
+    {
+        "id": "roleplay",
+        "music_mood": "dramatic",
+        "label": "Roleplay with me",
+        "blurb": "Plays a part in a scene you set: an interviewer, a tough client, a character.",
+        "accent": "#6A4FB0",
+        "prompt": "Roleplay. The TOPIC sets a scene and who plays whom. You are the actor: keep your own "
+        "voice, but speak as the character the scene gives you, in the first person, with that "
+        "character's goals, mood and way of talking, and treat the person you're talking with as the "
+        "character they play. Don't narrate, don't describe the scene and don't coach from inside it. "
+        "Keep the scene alive: give your character wants, push back, add a complication when it goes "
+        "flat. If the parts aren't clear, propose them in one line and begin. If they say 'pause the "
+        "scene' or ask how they're doing, step out, give two or three specific, honest notes, and "
+        "offer to pick the scene back up.",
+    },
 ]
 COHOST_MODES_BY_ID = {m["id"]: m for m in COHOST_MODES}
 

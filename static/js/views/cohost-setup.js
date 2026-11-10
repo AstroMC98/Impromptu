@@ -9,6 +9,7 @@ import { icon, KIND_ICON } from "../icons.js";
 import { bindPersonaForm, fillPersona, personaCard, personaFields, readPersona } from "../personas.js";
 import { introRow, lengthChip } from "../pod-options.js";
 import { navigate } from "../router.js";
+import { mountRules } from "../rules.js";
 import { loginPath, session } from "../session.js";
 import { applyAccent } from "../theme.js";
 import { openSheet } from "../ui.js";
@@ -90,6 +91,9 @@ export async function cohostSetupView(root) {
       <div class="radio-cards mode-cards" role="radiogroup" aria-label="How your co-host plays it" data-modes></div>
       <p class="faint small mode-hint">You can switch during the call.</p>
 
+      <h2 class="create-h2">Hard rules <span class="faint small">optional</span></h2>
+      <div class="rules" data-rules></div>
+
       <h2 class="create-h2">How long?</h2>
       <div class="len-chips" role="group" aria-label="Length" data-lengths></div>
 
@@ -118,6 +122,23 @@ export async function cohostSetupView(root) {
   root.append(el);
   const offHead = bindHeader(el);
   const $ = (s) => el.querySelector(s);
+  const rules = mountRules($("[data-rules]"), saved.rules);
+  // Roleplay asks for a scene, not a topic.
+  const TOPIC = {
+    label: "What are you two talking about?",
+    hint: "Is sourdough worth the hassle? Or: the best and worst calls of last night's game.",
+    missing: "Say what you'll talk about, even just a few words.",
+  };
+  const SCENE = {
+    label: "Set the scene",
+    hint: "A job interview at a design studio. You're the hiring manager, I'm the candidate, and you're hard to impress.",
+    missing: "Set the scene: where you are and who plays whom.",
+  };
+  const wording = () => (state.mode === "roleplay" ? SCENE : TOPIC);
+  const renderTopic = () => {
+    $("#topic-label").textContent = wording().label;
+    $("#topic").placeholder = wording().hint;
+  };
   const notes = $("#notes");
 
   // ---- rendering ---------------------------------------------------------------------
@@ -219,6 +240,7 @@ export async function cohostSetupView(root) {
     if (t.closest("[data-host]")) editHost();
     else if (t.closest("[data-mode]")) {
       state.mode = t.closest("[data-mode]").dataset.mode;
+      renderTopic();
       renderModes();
       tint();
     } else if (t.closest("[data-min]")) {
@@ -322,13 +344,14 @@ export async function cohostSetupView(root) {
   async function start(btn) {
     setError("");
     const topic = $("#topic").value.trim();
-    if (!topic) return setError("Say what you'll talk about, even just a few words.");
+    if (!topic) return setError(wording().missing);
     if (!session.options.api_key_set) return setError("GEMINI_API_KEY isn't set on the server, so calls can't start.");
     const yourName = $("#your-name").value.trim();
     const language = $("#language").value.trim() || "English";
     local.set("gp_cohost", {
       host: { ...state.host, context: "" },  // private notes aren't kept in the browser
       mode: state.mode, minutes: state.minutes, visibility: state.visibility, yourName, language,
+      rules: rules.get(),
     });
     btn.disabled = true;
     let mic;
@@ -344,6 +367,7 @@ export async function cohostSetupView(root) {
         request: {
           host: state.host, mode: state.mode, topic, notes: collectNotes().slice(0, notesMax), minutes: state.minutes,
           notes_names: state.attachments.map((a) => a.name).slice(0, 20), your_name: yourName, language,
+          hard_rules: rules.get(),
         },
         visibility: state.visibility,
         shared_with: state.visibility === "private" ? state.sharedWith : [],
@@ -385,6 +409,7 @@ export async function cohostSetupView(root) {
   data.intro = intro.intro;
   renderVisibility();
   renderIntro();
+  renderTopic();
   $("#topic").focus();
   return { unmount() { offHead(); } };
 }
