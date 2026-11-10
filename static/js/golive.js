@@ -7,6 +7,7 @@
 //
 // The overlay lives inside #app, so the route swap that opens the stage removes it, and the
 // view transition's "before" picture is the lit lamp.
+import { material } from "./components.js";
 import { html, setHtml } from "./html.js";
 import { animate, reduced, spring } from "./motion.js";
 import { fillRing, ring } from "./ring.js";
@@ -45,10 +46,13 @@ export async function countIn(button, start, { gel = "" } = {}) {
   el.className = "golive stage";
   if (gel) el.style.setProperty("--gel", gel);
   setHtml(el, html`
+    ${material()}
     <div class="gl-clock">${ring({ cls: "gl-ring", r: 46, dot: 1.9 })}<span class="gl-num" aria-hidden="true"></span>
       <span class="gl-lamp"><span>On air</span></span></div>
     <p class="gl-cap" role="status">Standing by</p>`);
-  app.append(el);
+  const dim = document.createElement("div");   // the house lights, going down
+  dim.className = "gl-dim";
+  app.append(dim, el);
   const ringEl = el.querySelector(".gl-ring");
   const num = el.querySelector(".gl-num");
   const lamp = el.querySelector(".gl-lamp");
@@ -59,7 +63,7 @@ export async function countIn(button, start, { gel = "" } = {}) {
   // screen, the page itself goes to the stage (dark scrollbars, the phone's status bar).
   const r = `${Math.min(box.height / 2, 999)}px`;
   const from = `inset(${box.top}px ${W - box.right}px ${H - box.bottom}px ${box.left}px round ${r})`;
-  animate(el, [{ clipPath: from }, { clipPath: "inset(0 0 0 0 round 0px)" }], { duration: 460, easing: "cubic-bezier(.65, 0, .35, 1)" })
+  animate(el, [{ clipPath: from }, { clipPath: "inset(0 0 0 0 round 0px)" }], { duration: 600, easing: "cubic-bezier(.65, 0, .35, 1)" })
     .finished.then(() => { if (alive()) setWorld("stage"); }).catch(() => {});
 
   // Its red dot flies to the middle of the clock and dims, ready to be the lamp.
@@ -142,6 +146,9 @@ export function goStage(path, { replace = false } = {}) {
 
 async function fold(el, to, world) {
   setWorld(world || "house");
+  const dim = document.querySelector(".gl-dim");
+  dim?.animate?.([{ opacity: 0.66 }, { opacity: 0 }], { duration: 380, fill: "forwards" });
+  setTimeout(() => dim?.remove(), 400);
   await animate(el, [{ clipPath: "inset(0 0 0 0 round 0px)", opacity: 1 }, { clipPath: to, opacity: 0 }],
     { duration: 380, easing: "cubic-bezier(.65, 0, .35, 1)" }).finished.catch(() => {});
   el.remove();

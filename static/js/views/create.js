@@ -1,5 +1,6 @@
 // /new — set up a pod: source, template or vibe, hosts and personas, length,
 // who can listen. Creating needs credits; going live spends them.
+import { coverUrl } from "../cover.js";
 import { api } from "../api.js";
 import { unlockAudio } from "../audio/context.js";
 import { countIn, goStage } from "../golive.js";
@@ -168,6 +169,8 @@ export async function createView(root, { query }) {
     }
     // Updated in place, so a new vibe's gel glides in (--gel is a registered color).
     box.querySelector(".sleeve").style.setProperty("--gel", gelFor(p?.accent || "#2F6BD0"));
+    const art = coverUrl(title || "Your pod", p?.accent || "#2F6BD0");
+    if (art) box.querySelector(".sleeve").style.setProperty("--cover", `url(${art})`);
     // A sleeve holds a few words, like a record's spine; the full title sits beside it.
     box.querySelector(".sleeve-t").textContent = (title.split(/\s+/).slice(0, 3).join(" ").replace(/[,:;.!?…-]+$/, "")) || "Your pod";
     box.querySelector("strong").textContent = title || "Your pod";

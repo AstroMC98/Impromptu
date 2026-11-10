@@ -2,6 +2,7 @@
 // pod lists, and the house screens: Home, Discover, Library and You.
 import { api } from "../api.js";
 import { waiting } from "../components.js";
+import { coverStyle } from "../cover.js";
 import { html, setHtml } from "../html.js";
 import { icon, logo, VISIBILITY_ICON, VISIBILITY_LABEL } from "../icons.js";
 import { flipById, slideIndicator, stagger } from "../motion.js";
@@ -20,12 +21,12 @@ const HOUSE_ACCENT = "#B8336A";
 
 // ---- the shell ---------------------------------------------------------------------------
 
-const NAV = [["/", "home", "Home"], ["/discover", "compass", "Discover"], ["/library", "grid", "Library"], ["/you", "user", "You"]];
+const NAV = [["/", "home", "Home"], ["/explore", "compass", "Explore"], ["/library", "grid", "Library"], ["/you", "user", "You"]];
 
 /** Which tab a path belongs to. */
 function section(path) {
   if (path === "/") return "/";
-  if (/^\/(discover|following|creator\/)/.test(path)) return "/discover";
+  if (/^\/(explore|discover|following|creator\/)/.test(path)) return "/explore";
   if (/^\/(library|albums|album\/|stats)/.test(path) || /^\/show\/[\w-]+\/stats$/.test(path)) return "/library";
   if (/^\/(show|cohost)\//.test(path)) return "";   // a pod belongs to no tab: it could come from anywhere
   return "/you";
@@ -54,7 +55,7 @@ function appNav() {
     <nav class="appnav" aria-label="Main">
       <a class="appnav-mark" href="/" data-link aria-label="Impromptu home">${logo()}</a>
       ${NAV.map(([href, ic, label]) => html`
-        <a class="appnav-item" href="${href}" data-link ${here === href ? html`aria-current="page"` : ""}>
+        <a class="appnav-item ${href === "/you" ? "appnav-you" : ""}" href="${href}" data-link ${here === href ? html`aria-current="page"` : ""}>
           <span class="appnav-ic">${icon(ic, 22)}${href === "/you" && session.incoming ? html`<span class="appnav-dot" aria-label="${session.incoming} new"></span>` : ""}</span>
           <span>${label}</span></a>`)}
       <a class="btn white appnav-new" href="/new" data-link><span class="rec-dot"></span>New pod</a>
@@ -73,8 +74,8 @@ function meAvatar(size) {
 function headActions() {
   if (!session.signedIn) {
     return html`
-      <a class="btn quiet" href="/discover" data-link>Discover</a>
-      <a class="btn white" href="${loginPath()}" data-link>Sign in</a>`;
+      <a class="btn link head-link" href="/explore" data-link>Explore</a>
+      <a class="btn quiet" href="${loginPath()}" data-link>Sign in</a>`;
   }
   const me = session.me;
   return html`
@@ -111,8 +112,7 @@ export function sleeve(s, size = "md") {
   const longest = Math.max(...short.split(/\s+/).map((w) => w.length), 1);
   const fit = longest > 10 ? (10 / longest).toFixed(3) : "1";
   return html`
-    <span class="sleeve ${size}" style="--gel:${gel};--fit:${fit}" aria-hidden="true">
-      ${size !== "sm" ? ring({ cls: "sleeve-ring", lit: (i) => i % 3 === 0, r: 44, dot: 2 }) : ""}
+    <span class="sleeve ${size}" style="--gel:${gel};--fit:${fit};${coverStyle(title, s.accent)}" aria-hidden="true">
       ${live && size !== "sm" ? html`<span class="sleeve-live">${call ? "On a call" : "Live"}</span>` : ""}
       ${s.status === "review" ? html`<span class="sleeve-review">Review</span>` : ""}
       ${call && size === "sm" ? html`<span class="sleeve-ic">${icon("mic", 20, 2.2)}</span>` : html`<span class="sleeve-t">${short}</span>`}
@@ -364,17 +364,18 @@ export async function libraryView(root, { url }) {
   const first = me ? me.name.split(" ")[0] : "";
   const hour = new Date().getHours();
   const hello = hour < 12 ? `Morning, ${first}.` : hour < 18 ? `Hi ${first}.` : `Evening, ${first}.`;
+  const when = hour < 12 ? "this morning's" : hour < 18 ? "today's" : "tonight's";
   setHtml(el, html`
     ${appHeader({ search: false })}
     <main class="home-main">
       ${me ? html`
         <section class="home-hero">
-          <h1><span class="hello">${hello}</span> What should today's pod be about?</h1>
+          <h1 class="two"><span class="hello">${hello}</span> <span class="ask">What should ${when} pod be about?</span></h1>
           <div data-brief></div>
           ${me.credits > 0 ? html`
             <form class="composer card" data-composer>
               <label class="sr-only" for="compose">What the pod is about</label>
-              <textarea id="compose" class="composer-area" rows="3" placeholder="Paste notes, drop in an idea, or type a topic. Add files and links on the next step."></textarea>
+              <textarea id="compose" class="composer-area" rows="3" placeholder="A topic, your notes, or a link"></textarea>
               <div class="composer-row">
                 <a class="composer-tool rec" href="/memo" data-link aria-label="Make a pod from a voice memo" title="From a voice memo">${icon("mic", 18)}</a>
                 <span class="grow"></span>
@@ -387,12 +388,17 @@ export async function libraryView(root, { url }) {
           ${!session.options.api_key_set ? html`<p class="error">GEMINI_API_KEY isn't set on the server yet, so pods can't start.</p>` : ""}
         </section>` : html`
         <section class="home-hero signed-out">
-          <h1>Live podcasts about anything. Call in while they're on air.</h1>
-          <p class="muted">Paste notes, drop in a PDF, share a link or just type a topic. The hosts start talking in seconds, and anyone listening can call in.</p>
+          <h1 class="two"><span>Live podcasts about anything.</span> <span class="ask">Call in while they're on air.</span></h1>
+          <p class="muted">Type a topic or paste your notes. The hosts start talking in seconds, and anyone listening can call in.</p>
           <div class="row gap wrap">
             <a class="btn white big" href="${loginPath("/new")}" data-link>Get started</a>
-            <a class="btn quiet big" href="/discover" data-link>Listen to public pods</a>
+            <a class="btn link" href="/discover" data-link>Browse every public pod</a>
           </div>
+        </section>
+        <section class="shelf home-deck" aria-labelledby="deck-h">
+          <div class="shelf-head"><h2 id="deck-h" class="shelf-h">Hear one now</h2></div>
+          <p class="sr-only">Swipe a card right to keep it, left to pass, or tap it to open.</p>
+          <div data-deck></div>
         </section>`}
       <section class="shelf" data-live-shelf hidden aria-labelledby="live-h">
         <div class="shelf-head"><h2 id="live-h" class="shelf-h"><span class="lamp red"></span>Live now</h2><a class="shelf-more" href="/discover" data-link>See all</a></div>
@@ -411,6 +417,10 @@ export async function libraryView(root, { url }) {
     </main>`);
   root.append(el);
   const offHead = bindHeader(el);
+  // Signed out, the first thing here is something to hear: the Explore deck.
+  let deck = null;
+  const deckHost = el.querySelector("[data-deck]");
+  if (deckHost) import("./explore.js").then((m) => { if (el.isConnected) deck = m.mountDeck(deckHost); });
 
   const form = el.querySelector("[data-composer]");
   form?.addEventListener("submit", (e) => {
@@ -455,7 +465,7 @@ export async function libraryView(root, { url }) {
     }
     session.refresh();
   }
-  return { unmount() { offHead(); } };
+  return { unmount() { offHead(); deck?.destroy(); } };
 }
 
 // ---- Discover and Library ------------------------------------------------------------------------
@@ -474,7 +484,7 @@ async function discoverView(root, { url }) {
   setHtml(el, html`
     ${appHeader()}
     <main class="page wide">
-      <div class="page-title"><h1>Discover</h1><p class="muted">Public pods anyone can hear, and new ones from the creators and albums you follow.</p></div>
+      <div class="page-title"><h1 class="two"><span>Everything public.</span> <span class="ask">And what the people you follow just made.</span></h1></div>
       <div class="lib-body" data-list></div>
     </main>`);
   root.append(el);
@@ -496,7 +506,7 @@ export async function libraryPageView(root) {
   setHtml(el, html`
     ${appHeader()}
     <main class="page wide">
-      <div class="page-title row"><div class="col grow"><h1>Library</h1></div>
+      <div class="page-title row"><div class="col grow"><h1 class="two"><span>Your library.</span> <span class="ask">Every pod you made or were sent.</span></h1></div>
         <a class="btn chip-btn small-btn" href="/albums" data-link>${icon("bars", 14, 2.4)}Albums</a>
         <a class="btn chip-btn small-btn" href="/stats" data-link>${icon("people", 14, 2.2)}Stats</a></div>
       <div class="lib-body" data-list></div>

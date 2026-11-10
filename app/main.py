@@ -1,7 +1,7 @@
 """HTTP + WebSocket surface.
 
 Pages (all serve the single-page UI)
-GET  /  /discover  /following  /new  /login  /personas  /styles  /connections  /admin  /briefings
+GET  /  /explore  /discover  /following  /new  /login  /personas  /styles  /connections  /admin  /briefings
 GET  /albums  /stats  /show/{id}  /show/{id}/stats  /album/{id}  /creator/{uid}  /invite/{uid}
 GET  /memo  /intro                         make a pod from a voice memo; your show intro
 GET  /cohost  /cohost/{id}               co-host live: set up a call, then the call itself
@@ -614,6 +614,7 @@ async def favicon() -> FileResponse:
 
 
 @app.get("/")
+@app.get("/explore")
 @app.get("/discover")
 @app.get("/following")
 @app.get("/library")

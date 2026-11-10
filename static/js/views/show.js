@@ -3,7 +3,7 @@
 // or desktop layout.
 import { api } from "../api.js";
 import { unlockAudio } from "../audio/context.js";
-import { loader } from "../components.js";
+import { loader, material } from "../components.js";
 import { countIn, goStage } from "../golive.js";
 import { html, setHtml } from "../html.js";
 import { ring } from "../ring.js";
@@ -118,6 +118,7 @@ export async function showView(root, { params }) {
 function errorScreen(root, message) {
   setHtml(root, html`
     <div class="splash stage">
+      ${material()}
       ${ring({ lit: (i) => i % 15 === 0 })}
       <p class="splash-title">Off air</p>
       <p class="muted">${message}</p>
@@ -134,6 +135,7 @@ function draftScreen(root, data) {
   applyAccent(document.documentElement, s.accent);
   setHtml(root, html`
     <div class="draft stage">
+      ${material()}
       <header class="draft-top">
         <a class="icon-btn" href="/" data-link aria-label="Your pods">${icon("chevronLeft", 24, 2.2)}</a>
         <span class="badge ended">Draft</span>

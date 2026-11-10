@@ -33,7 +33,7 @@ export function liveBadge(store, ctl, pos) {
 
 /** The stage-world loader: the studio clock chasing, with what's happening. */
 export function loader(text, { title = "" } = {}) {
-  return html`<div class="splash stage">${ring({ chase: true })}${title ? html`<p class="splash-title">${title}</p>` : ""}<p>${text}</p></div>`;
+  return html`<div class="splash stage">${material()}${ring({ chase: true })}${title ? html`<p class="splash-title">${title}</p>` : ""}<p>${text}</p></div>`;
 }
 
 /** The house's wait: a small studio clock chasing. It only shows once the wait passes
@@ -43,19 +43,60 @@ export function waiting(label = "", { inline = false } = {}) {
     ${ring({ chase: true, cls: "waiting-ring", r: 42, dot: 3.4 })}${label ? html`<span>${label}</span>` : ""}</div>`;
 }
 
-/** The hosts as chips; the one talking is lit, and its ring follows their voice (--lv). */
-export function hostChips(store, pos) {
-  const hosts = store.plan?.hosts || store.show.hosts || [];
-  const at = store.lineAt(pos);
-  const speaking = at && !at.done ? at.seg.lines[at.idx]?.speaker : "";
-  return html`${hosts.map((h, i) => html`
-    <button type="button" class="host-chip ${h.name && h.name === speaking ? "talk" : ""}" data-action="hosts">
-      ${avatar(h.name || "?", session.hostColor(i).avatar, 28)}<span>${h.name || "Host"}</span></button>`)}`;
+/** The stage's material (Dusk): three slow lights in the episode's colour, halftone dots in
+ *  one corner, and grain. First child of a stage surface; it sits behind everything else. */
+export function material() {
+  return html`<div class="mat" aria-hidden="true"><i></i><i></i><i></i><b></b><u></u></div>`;
 }
 
-export function hostChipsKey(store, pos) {
+/** What the hosts are doing: who is speaking (only while it's playing), and whether they're
+ *  working (planning, or writing what comes next). Anything else is idle. */
+export function hostState(store, ctl, pos) {
   const at = store.lineAt(pos);
-  return `${store.version}|${at && !at.done ? at.seg.lines[at.idx]?.speaker : ""}`;
+  const playing = !ctl || (ctl.play.started && !ctl.play.paused);
+  const speaking = playing && at && !at.done ? at.seg.lines[at.idx]?.speaker || "" : "";
+  let working = false;
+  if (ctl?.live && !store.ended) {
+    working = !store.segments.length
+      || (playing && !speaking && !store.inIntro(pos) && store.state !== "holding" && (ctl.play.buffering || ctl.atAudioEdge(pos)));
+  }
+  return { speaking, working };
+}
+
+/** A host as a voice shape. It has three states and only two of them move: "talk" (the
+ *  shape follows their voice, --lv), "work" (a ring of dots turns around a still shape), and
+ *  idle (""), which is completely still. */
+export function orb(i, state = "", size = 28) {
+  const c = session.hostColor(i);
+  return html`<span class="orb ${state}" style="--a:${c.label};--b:${c.avatar};--size:${size}px" aria-hidden="true">${
+    state === "work" ? ring({ cls: "orb-ring", lit: (k) => k < 16, r: 46, dot: 3.2 }) : ""}</span>`;
+}
+
+const stateOf = (h, st) => (h.name && h.name === st.speaking ? "talk" : st.working ? "work" : "");
+const STATE_WORDS = { talk: ", speaking", work: ", writing" };
+
+/** The hosts as chips, each with its voice shape. */
+export function hostChips(store, pos, ctl) {
+  const hosts = store.plan?.hosts || store.show.hosts || [];
+  const st = hostState(store, ctl, pos);
+  return html`${hosts.map((h, i) => {
+    const state = stateOf(h, st);
+    return html`
+    <button type="button" class="host-chip ${state}" data-action="hosts">
+      ${orb(i, state, 30)}<span>${h.name || "Host"}</span><span class="sr-only">${STATE_WORDS[state] || ""}</span></button>`;
+  })}`;
+}
+
+/** The hosts as shapes alone (the desktop studio, beside their names). */
+export function hostOrbs(store, pos, ctl, size = 40) {
+  const hosts = store.plan?.hosts || store.show.hosts || [];
+  const st = hostState(store, ctl, pos);
+  return html`<span class="orbs">${hosts.map((h, i) => orb(i, stateOf(h, st), size))}</span>`;
+}
+
+export function hostChipsKey(store, pos, ctl) {
+  const st = hostState(store, ctl, pos);
+  return `${store.version}|${st.speaking}|${st.working}`;
 }
 
 /** The status line shown when there's no caption to show, or under the captions. */

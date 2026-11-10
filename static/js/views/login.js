@@ -1,4 +1,5 @@
 // /login — Firebase (Google, or email + password), or dev sign-in locally.
+import { material } from "../components.js";
 import { api } from "../api.js";
 import { html, raw, setHtml } from "../html.js";
 import { icon, logo } from "../icons.js";
@@ -22,6 +23,7 @@ export async function loginView(root, { query }) {
 
   const render = () => setHtml(root, html`
     <main class="login stage" style="--gel:#FFB257">
+      ${material()}
       <span class="login-ring">${ring({ lit: (i) => i < 22, r: 46, dot: 0.9 })}</span>
       <div class="login-card">
         <a class="login-mark" href="/" data-link aria-label="Impromptu home">${logo()}</a>

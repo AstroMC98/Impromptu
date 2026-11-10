@@ -4,7 +4,7 @@
 // producer, interrupt. Replays go straight to Now playing.
 import {
   callinLines, callinsKey, captions, captionsKey, captionTick, chapterBar, chapterBarKey, chapterLabel, detourCue, hostChips,
-  hostChipsKey, lineNews, liveBadge, liveBadgeKey, myCallinNews,
+  hostChipsKey, lineNews, liveBadge, liveBadgeKey, material, myCallinNews,
 } from "../components.js";
 import { html, setHtml } from "../html.js";
 import { icon } from "../icons.js";
@@ -23,7 +23,9 @@ export function mountMobile(root, ctl) {
     const page = document.createElement("div");
     page.className = "np-page stage";
     root.append(page);
-    return mountNowPlaying(page, ctl, { page: true });
+    const replay = mountNowPlaying(page, ctl, { page: true });
+    page.insertAdjacentHTML("afterbegin", String(material()));
+    return replay;
   }
 
   const s = ctl.store;
@@ -33,6 +35,7 @@ export function mountMobile(root, ctl) {
   const el = document.createElement("div");
   el.className = "live-m stage";
   setHtml(el, html`
+    ${material()}
     <header class="lm-top">
       <a class="icon-btn" href="${session.signedIn ? "/" : "/discover"}" data-link aria-label="${session.signedIn ? "Home" : "Discover"}">${icon("chevronDown", 24, 2.2)}</a>
       <span data-r="badge"></span>
@@ -140,7 +143,7 @@ export function mountMobile(root, ctl) {
       r.set("lines", callinsKey(s, pos), () => callinLines(s, pos));
       const news = myCallinNews(s, pos);
       r.set("news", news, () => news);
-      r.set("hosts", hostChipsKey(s, pos), () => hostChips(s, pos));
+      r.set("hosts", hostChipsKey(s, pos, ctl), () => hostChips(s, pos, ctl));
       // The key light and the talking host's ring follow the voices.
       const lv = calm ? 0 : Math.min(1, (ctl.player.level?.() || 0) * 6);
       el.style.setProperty("--level", lv.toFixed(3));

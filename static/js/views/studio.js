@@ -2,7 +2,7 @@
 // left, the 16:9 live player in the middle, call-ins / context / rundown on the right.
 import {
   callins, callinsKey, captions, captionsKey, captionTick, chapterBar, chapterBarKey, chapterLabel, chapters, chaptersKey,
-  contextKey, contextList, detourCue, hostAvatars, lineNews, liveBadge, liveBadgeKey, showNotes,
+  contextKey, contextList, detourCue, hostChipsKey, hostOrbs, material, lineNews, liveBadge, liveBadgeKey, showNotes,
 } from "../components.js";
 import { odometer, reduced } from "../motion.js";
 import { html, renderSpoken, setHtml } from "../html.js";
@@ -34,6 +34,7 @@ export function mountStudio(root, ctl) {
     <div class="studio-body">
       <main class="studio-stage">
         <section class="player" aria-label="${ctl.live ? "Live player" : "Player"}" data-player>
+          ${material()}
           <div class="pl-top">
             <span class="row gap-s"><span data-r="badge"></span><span class="clock" data-r="clock">0:00</span></span>
             <span class="pl-chapter" data-r="chapterlabel"></span>
@@ -177,7 +178,10 @@ export function mountStudio(root, ctl) {
       const said = lineNews(s, pos);
       r.set("said", said.key, () => said.text);
       detourCue(s, pos, el);
-      el.style.setProperty("--level", reduced() ? "0" : Math.min(1, (ctl.player.level?.() || 0) * 6).toFixed(3));
+      const lv = reduced() ? 0 : Math.min(1, (ctl.player.level?.() || 0) * 6);
+      el.style.setProperty("--level", lv.toFixed(3));
+      r.set("avatars", hostChipsKey(s, pos, ctl), () => hostOrbs(s, pos, ctl, 40));
+      el.querySelector(".orbs .orb.talk")?.style.setProperty("--lv", lv.toFixed(3));
       r.set("chapters", chapterBarKey(s, pos), () => chapterBar(s, pos));
       const paused = !ctl.play.started || ctl.play.paused;
       r.set("play", paused, () => (paused ? icon("play", 22, 2.6) : icon("pause", 22, 3)));
@@ -201,7 +205,6 @@ export function mountStudio(root, ctl) {
       const notes = showNotes(s);
       el.querySelector("[data-notes]").hidden = !notes;
       r.set("notes", String(notes), () => notes);
-      r.set("avatars", `${s.version}`, () => hostAvatars(s, 40));
       r.set("hostnames", s.hostNames(), () => s.hostNames() || "Hosts coming up");
       const by = !s.producer ? "" : s.show.kind === "briefing" ? "Your briefing" : VISIBILITY_LABEL[s.show.visibility] || "";
       r.set("creator", creatorBarKey(s), () => creatorBar(s, ctl.id));

@@ -8,7 +8,10 @@ uses one of their characters.
 |---|---|---|---|
 | `anybody-latin.woff2`, `anybody-latin-ext.woff2` | Anybody, by Tyler Finck (Etcetera Type Co) | width 50–150, weight 100–900 | SIL Open Font License 1.1 |
 | `atkinson-next-latin.woff2`, `atkinson-next-latin-ext.woff2` | Atkinson Hyperlegible Next, by the Braille Institute of America | weight 200–800 | SIL Open Font License 1.1 |
+| `manrope-latin.woff2`, `manrope-latin-ext.woff2` | Manrope, by Mikhail Sharanda | weight 200–800 | SIL Open Font License 1.1 |
 
-Roles: Anybody is the display face (titles, captions, sleeves); Atkinson Hyperlegible Next
+Roles: with the Dusk layer on (`static/css/dusk.css`, see `docs/plans/dusk.md`), Manrope is
+the display face (headlines, captions, covers) and Anybody is not downloaded. Without it,
+Anybody is the display face (titles, captions, sleeves). Atkinson Hyperlegible Next
 is everything else. See `docs/plans/design-system.md` §2.2. The logo needs no font: it is
 artwork from the brand kit (`static/brand`).
