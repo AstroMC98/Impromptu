@@ -2109,6 +2109,14 @@ def _():
         except notebook.NotebookFull:
             pass
         assert len(await notebook.pages(store, "u1", "Zoe Park")) == len(book)      # nothing half-added
+        for i in range(notebook.MAX_NOTEBOOKS - 1):
+            await notebook.add(store, "u1", f"Host {i}", "", "A page.")
+        try:
+            await notebook.add(store, "u1", "One host too many", "", "A page.")
+            raise AssertionError("an account started more notebooks than it may keep")
+        except notebook.NotebookFull:
+            pass
+        await notebook.add(store, "u1", "Host 0", "", "A second page for a host that has a notebook.")
     asyncio.run(run())
 
 
@@ -2131,6 +2139,10 @@ def _():
         assert "Jo called in" in memory.returning(kept, "jo-uid", ["Ruby", "Someone new"])
         assert memory.returning(kept, "jo-uid", ["Zoe Park"]) == "" and memory.returning(kept, "other", ["Ruby"]) == ""
         assert await memory.recall(store, "u1", "Theo") == []        # a caller memory is not about you
+        many = {f"uid-{i}": {"name": f"Caller {i}", "said": [f"Question number {i}?"]} for i in range(8)}
+        total = sum([await memory.propose_callers(store, "u1", many, hosts=["Theo"], show_id=f"s{n}", show_title=f"Show {n}")
+                     for n in range(5)])
+        assert total == memory.MAX_PENDING_CALLERS       # the queue of caller proposals is capped
     asyncio.run(run())
     line = prompts._comment_line(ListenerComment(id=3, name="Jo", text="Me again!", returning="Jo called in before."))
     assert "has called before" in line and "Jo called in before." in line

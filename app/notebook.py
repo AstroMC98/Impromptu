@@ -27,6 +27,7 @@ MAX_PAGES = 100
 MAX_CHARS = 100_000        # a whole notebook
 PAGE_CHARS = 4_000         # one page; longer text becomes several pages
 TITLE_CHARS = 80
+MAX_NOTEBOOKS = 20         # hosts with a notebook, per account: bounds what one account can store
 
 
 class NotebookFull(ValueError):
@@ -74,6 +75,8 @@ async def add(store: Store, uid: str, host: str, title: str, text: str) -> list[
         raise ValueError("A page needs a host and something written on it.")
     parts = passages(text, PAGE_CHARS)
     have = await pages(store, uid, host)
+    if not have and len(await shelves(store, uid)) >= MAX_NOTEBOOKS:
+        raise NotebookFull(f"You can keep notebooks for up to {MAX_NOTEBOOKS} hosts. Empty one to start another.")
     used = sum(len(p.get("text", "")) for p in have)
     if len(have) + len(parts) > MAX_PAGES:
         raise NotebookFull(f"A notebook holds {MAX_PAGES} pages. This would make {len(have) + len(parts)}.")

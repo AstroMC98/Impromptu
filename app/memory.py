@@ -37,6 +37,7 @@ PER_CALL = 6               # proposals one call can make
 PROMPT_ITEMS = 40          # memories a co-host is handed for one call
 SCOPES = ("host", "shared")
 CALLERS_PER_SHOW = 8       # callers one show can propose
+MAX_PENDING_CALLERS = 20   # caller proposals waiting at once; more are not added, so they can't crowd out your own
 CALLER_NOTES = 3           # what a host is told about a returning caller, at most
 
 
@@ -88,9 +89,13 @@ async def propose_callers(store: Store, uid: str, callers: dict[str, dict], *, h
     names = [" ".join(h.split())[:40] for h in hosts if h and h.strip()]
     if not names:
         return 0
-    known = [m["text"] for m in await all_items(store, uid)]
+    items = await all_items(store, uid)
+    known = [m["text"] for m in items]
+    waiting = sum(m.get("status") == "pending" and m.get("scope") == "caller" for m in items)
     added = 0
     for caller_uid, c in list(callers.items())[:CALLERS_PER_SHOW]:
+        if waiting + added >= MAX_PENDING_CALLERS:
+            break
         asked = clean_text(" / ".join(c.get("said", [])[:2]))[:150]
         name = " ".join(str(c.get("name", "")).split())[:40]
         if not asked or not name or not caller_uid:
