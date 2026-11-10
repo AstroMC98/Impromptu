@@ -2085,6 +2085,58 @@ def _():
     assert "Marc: I bake on Sundays" in said and "Nova: Every Sunday?" in said and "- Marc lives in Manila." in said
 
 
+@check("notebooks: pages by host, long text split, limits held, and the pages that match come back")
+def _():
+    from app import notebook
+
+    async def run():
+        store = LocalStore(tempfile.mkdtemp(prefix="podcasts-notebook-"))
+        made = await notebook.add(store, "u1", "Zoe  Park", "Pricing", "Pro is 12 dollars a month.\nTeams is 30.")
+        assert len(made) == 1 and made[0]["title"] == "Pricing" and made[0]["host_key"] == "zoe park"
+        long = "\n\n".join(f"Paragraph {i}. " + "Sourdough starters need feeding. " * 30 for i in range(12))
+        parts = await notebook.add(store, "u1", "zoe park", "Bread report", long)
+        assert len(parts) > 1 and parts[1]["title"] == "Bread report (2)" and all(len(p["text"]) <= notebook.PAGE_CHARS for p in parts)
+        book = await notebook.pages(store, "u1", "ZOE PARK")
+        assert [p["title"] for p in book][:2] == ["Pricing", "Bread report (1)"] and await notebook.pages(store, "u1", "Theo") == []
+        assert (await notebook.shelves(store, "u1"))[0]["pages"] == len(book)
+        text = notebook.as_text(book)
+        assert text.startswith("## Pricing\nPro is 12 dollars") and notebook.relevant(book, "anything", 10 ** 6) == text
+        small = notebook.relevant(book, "how much is the Teams plan in dollars", 1500)
+        assert "Teams is 30" in small and len(small) <= 1500
+        try:
+            await notebook.add(store, "u1", "Zoe Park", "Too much", "x" * (notebook.MAX_CHARS + 1))
+            raise AssertionError("a notebook took more than it holds")
+        except notebook.NotebookFull:
+            pass
+        assert len(await notebook.pages(store, "u1", "Zoe Park")) == len(book)      # nothing half-added
+    asyncio.run(run())
+
+
+@check("caller memory: proposed per caller for the show's hosts, used only once approved, and only by those hosts")
+def _():
+    from app import memory
+    from app.models import ListenerComment
+
+    async def run():
+        store = LocalStore(tempfile.mkdtemp(prefix="podcasts-callers-"))
+        callers = {"jo-uid": {"name": "Jo", "said": ["Where's the line between a prototype and production?"]},
+                   "": {"name": "Nobody", "said": ["signed out"]}}
+        assert await memory.propose_callers(store, "u1", callers, hosts=["Theo", "Ruby"], show_id="s1", show_title="Vibe coding") == 1
+        assert await memory.propose_callers(store, "u1", callers, hosts=["Theo", "Ruby"], show_id="s1", show_title="Vibe coding") == 0
+        item = (await memory.all_items(store, "u1"))[0]
+        assert (item["scope"], item["caller_uid"], item["host_keys"], item["status"]) == ("caller", "jo-uid", ["theo", "ruby"], "pending")
+        assert await memory.kept_callers(store, "u1") == [] and await memory.recall(store, "u1", "Theo") == []
+        await store.put_item("u1", memory.KIND, {**item, "status": "kept"})
+        kept = await memory.kept_callers(store, "u1")
+        assert "Jo called in" in memory.returning(kept, "jo-uid", ["Ruby", "Someone new"])
+        assert memory.returning(kept, "jo-uid", ["Zoe Park"]) == "" and memory.returning(kept, "other", ["Ruby"]) == ""
+        assert await memory.recall(store, "u1", "Theo") == []        # a caller memory is not about you
+    asyncio.run(run())
+    line = prompts._comment_line(ListenerComment(id=3, name="Jo", text="Me again!", returning="Jo called in before."))
+    assert "has called before" in line and "Jo called in before." in line
+    assert "called before" not in prompts._comment_line(ListenerComment(id=4, name="Al", text="Hi"))
+
+
 def main() -> int:
     width = max(len(n) for n, _, _ in RESULTS)
     for name, ok, err in RESULTS:

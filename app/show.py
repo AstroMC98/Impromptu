@@ -230,6 +230,7 @@ class ShowRunner:
         self.style_acked = 0
 
         self.comments: dict[int, Comment] = {}
+        self.returning: dict[int, str] = {}      # comment id -> what the hosts remember of that caller
         self._next_comment_id = 1
         self.context: dict[int, ContextItem] = {}
         self._next_context_id = 1
@@ -263,7 +264,8 @@ class ShowRunner:
     # ---- input from the room --------------------------------------------------
 
     def add_comment(
-        self, name: str, text: str, role: str, client_id: str = "", context_id: int | None = None
+        self, name: str, text: str, role: str, client_id: str = "", context_id: int | None = None,
+        returning: str = "",
     ) -> tuple[Comment | None, str | None]:
         """Returns (comment, None) or (None, error code)."""
         name = (name or "").strip()[:NAME_CHARS] or ("Producer" if role == "producer" else "A listener")
@@ -282,6 +284,8 @@ class ShowRunner:
             at=int(self.room.clock.live), client_id=client_id[:40], context_id=context_id,
         )
         self._next_comment_id += 1
+        if returning:
+            self.returning[comment.id] = returning      # for the writers only, never the listeners
         if self.finished_writing:
             comment.status = "too_late"
         else:
@@ -456,7 +460,7 @@ class ShowRunner:
             if x:
                 offered_context.add(x.id)
         return ListenerComment(
-            id=c.id, name=c.name, text=c.text,
+            id=c.id, name=c.name, text=c.text, returning=self.returning.get(c.id, ""),
             attachment=self._brief(attachment) if attachment else None,
             research=self._brief(research) if research else None,
             research_failed=c.research == "failed" or (c.research == "pending" and c.status == "promised"),

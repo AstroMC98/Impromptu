@@ -19,7 +19,8 @@ const THROW = 96;
 const FLICK = 0.55;
 const GELS = ["#6A4FB0", "#2F6BD0", "#1F7F6A", "#B5521C", "#B8336A", "#2E6F9E"];
 const gel = (m) => GELS[[...(m.host_key || "shared")].reduce((n, c) => n + c.charCodeAt(0), 0) % GELS.length];
-const whose = (m) => (m.scope === "shared" || !m.host ? "Every co-host" : m.host);
+const whose = (m) => (m.scope === "caller" ? `Caller · ${m.caller_name || "a listener"}`
+  : m.scope === "shared" || !m.host ? "Every co-host" : m.host);
 
 export async function memoryView(root) {
   if (!session.signedIn) {
@@ -39,6 +40,7 @@ export async function memoryView(root) {
       <div class="page-title"><h1 class="two"><span>What your co-hosts remember.</span> <span class="ask">Nothing is kept until you say so.</span></h1></div>
       <section class="mem-review" data-review aria-label="Memories to review"></section>
       <section class="mem-kept" data-kept aria-label="Kept memories"></section>
+      <section class="mem-more" data-more aria-label="Notebooks and callers"></section>
     </main>`);
   root.append(el);
   const offHead = bindHeader(el);
@@ -47,6 +49,8 @@ export async function memoryView(root) {
   let kept = [];
   let busy = false;
   let dead = false;
+  let rememberCallers = false;
+  let notebooks = [];
 
   const card = (m, depth) => html`
     <article class="mcard" data-depth="${depth}" style="--gel:${gel(m)}" ${depth ? html`aria-hidden="true"` : ""}>
@@ -81,7 +85,8 @@ export async function memoryView(root) {
       </div>
       <div class="deck-actions">
         <button class="round-btn deck-btn" type="button" data-swipe="pass" aria-label="Forget it">${icon("close", 22, 2.4)}<span class="deck-lab" aria-hidden="true">Forget</span></button>
-        <button class="btn quiet mem-scope" type="button" data-scope>${m.scope === "shared" ? `Only for ${m.host || "this co-host"}` : "Share with every co-host"}</button>
+        ${m.scope === "caller" ? html`<span class="mem-for">For ${m.host}</span>`
+          : html`<button class="btn quiet mem-scope" type="button" data-scope>${m.scope === "shared" ? `Only for ${m.host || "this co-host"}` : "Share with every co-host"}</button>`}
         <button class="round-btn deck-btn" type="button" data-swipe="keep" aria-label="Keep it">${icon("heart", 22, 2.2)}<span class="deck-lab" aria-hidden="true">Keep</span></button>
       </div>
       <p class="sr-only" role="status" data-said></p>`);
@@ -102,7 +107,8 @@ export async function memoryView(root) {
 
   const renderKept = () => {
     if (dead) return;
-    const shared = kept.filter((m) => m.scope === "shared" || !m.host_key);
+    const shared = kept.filter((m) => m.scope !== "caller" && (m.scope === "shared" || !m.host_key));
+    const callers = kept.filter((m) => m.scope === "caller");
     const hosts = [...new Map(kept.filter((m) => m.scope === "host" && m.host_key).map((m) => [m.host_key, m.host])).entries()];
     setHtml($("[data-kept]"), html`
       <div class="mem-kept-head">
@@ -111,7 +117,42 @@ export async function memoryView(root) {
       </div>
       ${kept.length ? "" : html`<p class="muted">Nothing kept yet. You can also write one yourself.</p>`}
       ${group("Every co-host knows", shared)}
-      ${hosts.map(([key, name]) => group(`Only ${name} knows`, kept.filter((m) => m.scope === "host" && m.host_key === key)))}`);
+      ${hosts.map(([key, name]) => group(`Only ${name} knows`, kept.filter((m) => m.scope === "host" && m.host_key === key)))}
+      ${group("Callers your hosts remember", callers)}`);
+  };
+
+  /** Under the memories: each host's notebook, and whether callers are remembered. */
+  const renderMore = () => {
+    if (dead) return;
+    const named = new Map(notebooks.map((n) => [n.host_key, n.host]));
+    for (const m of kept.concat(pending)) if (m.scope !== "caller" && m.host_key && !named.has(m.host_key)) named.set(m.host_key, m.host);
+    for (const p of session.options.persona_presets || []) if (!named.has(p.name.toLowerCase())) named.set(p.name.toLowerCase(), p.name);
+    const without = [...named].filter(([key]) => !notebooks.some((n) => n.host_key === key));
+    setHtml($("[data-more]"), html`
+      <div class="mem-block">
+        <h2 class="mem-h">Notebooks</h2>
+        <p class="muted small">Pages of your own material a host can look things up in: facts, an outline, a whole report.</p>
+        ${notebooks.length ? html`<ul class="mem-list">${notebooks.map((n) => html`
+          <li><a class="mem-row nb-shelf" href="/notebook?host=${encodeURIComponent(n.host)}" data-link>
+            <span class="mem-text">${n.host}</span>
+            <span class="muted small">${n.pages} page${n.pages === 1 ? "" : "s"}</span>${icon("chevronRight", 16)}</a></li>`)}</ul>` : ""}
+        <div class="row gap nb-open">
+          <label class="sr-only" for="nb-host">Open a notebook for</label>
+          <select id="nb-host" class="field">
+            <option value="">Start a notebook for…</option>
+            ${without.map(([, name]) => html`<option value="${name}">${name}</option>`)}
+          </select>
+        </div>
+      </div>
+      <div class="mem-block">
+        <h2 class="mem-h">Callers</h2>
+        <button type="button" role="switch" class="radio-card research-card" data-toggle-callers aria-checked="${rememberCallers ? "true" : "false"}">
+          <span class="radio-dot" aria-hidden="true"></span>
+          <span class="radio-text"><span class="radio-title">${icon("people", 16)} Remember callers</span>
+            <span class="radio-desc">When someone signed in calls one of your live pods, its hosts can remember them for next time.
+              Each caller shows up above for a yes or a no first.</span></span>
+        </button>
+      </div>`);
   };
 
   const say = (text) => { const s = $("[data-said]"); if (s) s.textContent = text; };
@@ -130,7 +171,8 @@ export async function memoryView(root) {
       { transform: `translate(${off}px, ${from.y + 40}px) rotate(${sign * 22}deg)`, opacity: 0 },
     ], { duration: 320, easing: "cubic-bezier(.4, 0, .9, .6)", calm: [{ opacity: 1 }, { opacity: 0 }] }).finished.catch(() => {});
     try {
-      const saved = keep ? await api.editMemory(m.id, { status: "kept", scope: m.scope }) : await api.forgetMemory(m.id);
+      const saved = keep ? await api.editMemory(m.id, m.scope === "caller" ? { status: "kept" } : { status: "kept", scope: m.scope })
+        : await api.forgetMemory(m.id);
       await fly;
       pending = pending.slice(1);
       if (keep) kept = [saved, ...kept];
@@ -198,11 +240,12 @@ export async function memoryView(root) {
         <form class="col gap" data-mem-form>
           <label class="field-label" for="mem-text">What to remember</label>
           <textarea id="mem-text" class="field area short" maxlength="240" placeholder="I'm training for a half marathon in March.">${m?.text || ""}</textarea>
+          ${m?.scope === "caller" ? "" : html`
           <label class="field-label" for="mem-who">Who knows it</label>
           <select id="mem-who" class="field">
             <option value="">Every co-host</option>
             ${(m?.host ? [m.host] : hosts).map((h) => html`<option value="${h}" ${m?.scope === "host" && m.host === h ? "selected" : ""}>Only ${h}</option>`)}
-          </select>
+          </select>`}
           <p class="error" role="alert" data-mem-error></p>
           <button class="btn white big block" type="submit">${m ? "Save" : "Remember it"}</button>
         </form>`,
@@ -212,11 +255,11 @@ export async function memoryView(root) {
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const text = form.querySelector("#mem-text").value.trim();
-      const host = form.querySelector("#mem-who").value;
+      const host = form.querySelector("#mem-who")?.value || "";
       if (!text) { form.querySelector("[data-mem-error]").textContent = "Write what to remember."; return; }
       try {
         if (m) {
-          const saved = await api.editMemory(m.id, { text, scope: host ? "host" : "shared" });
+          const saved = await api.editMemory(m.id, m.scope === "caller" ? { text } : { text, scope: host ? "host" : "shared" });
           kept = kept.map((k) => (k.id === m.id ? saved : k));
         } else {
           kept = [await api.addMemory({ text, scope: host ? "host" : "shared", host }), ...kept];
@@ -239,6 +282,16 @@ export async function memoryView(root) {
       return renderReview(true);
     }
     if (t.closest("[data-add]")) return editSheet(null);
+    if (t.closest("[data-toggle-callers]")) {
+      try {
+        rememberCallers = (await api.memorySettings({ remember_callers: !rememberCallers })).remember_callers;
+        renderMore();
+        el.querySelector("[data-toggle-callers]")?.focus();
+      } catch (err) {
+        toast(err.message);
+      }
+      return;
+    }
     const edit = t.closest("[data-edit]");
     if (edit) return editSheet(kept.find((k) => k.id === edit.dataset.edit));
     const forget = t.closest("[data-forget]");
@@ -265,14 +318,20 @@ export async function memoryView(root) {
     e.preventDefault();
   };
   el.addEventListener("click", onClick);
+  el.addEventListener("change", (e) => {
+    if (e.target.id === "nb-host" && e.target.value) navigate(`/notebook?host=${encodeURIComponent(e.target.value)}`);
+  });
   document.addEventListener("keydown", onKey);
 
   setHtml($("[data-review]"), waiting("Fetching what they remember"));
   api.memories().then((data) => {
     pending = data.pending || [];
     kept = data.kept || [];
+    rememberCallers = Boolean(data.remember_callers);
     renderReview();
     renderKept();
+    renderMore();
+    api.notebooks().then((d) => { notebooks = d.notebooks || []; renderMore(); }).catch(() => {});
   }).catch((err) => setHtml($("[data-review]"), html`<p class="error">${err.message}</p>`));
 
   return { unmount() { dead = true; offHead(); document.removeEventListener("keydown", onKey); } };

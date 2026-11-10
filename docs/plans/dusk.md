@@ -77,7 +77,9 @@ not affected.
 | Hard rules | `hard_rules` on a pod's or call's request; `prompts.hard_rules` closes every system prompt; editor in `static/js/rules.js` | built |
 | Roleplay and Educate | two more co-host modes in `catalog.COHOST_MODES`; the setup page asks for a scene or for something to learn | built |
 | Memory | `app/memory.py`, `/api/memories`, the Memory page (`static/js/views/memory.js`), "Use memory" on the co-host setup page | first slice built |
-| Notebooks, caller memory, the merged cast | | not built |
+| Notebooks | `app/notebook.py`, `/api/notebook`, `static/js/views/notebook.js` (`/notebook?host=Name`) | built |
+| Caller memory | `memory.propose_callers` / `returning`, the room's `_load_caller_memory` and `_remember_callers`, the switch on the Memory page | built |
+| The cast | `catalog.CAST`: 18 house hosts shared by templates and pickers, a voice each | built |
 
 Memory, as built: a call started with "Use memory" hands the co-host what you have
 approved for them (their own memories, then the shared ones) and, once the episode is
@@ -85,6 +87,19 @@ saved, asks the model what is worth remembering. Those proposals wait on the Mem
 right keeps one, left forgets it, and a button shares it with every co-host. Memories are
 saved items of kind `memories`, so they need no new store code. The whole list fits in the
 prompt, so there is no search yet.
+
+A notebook is up to 100 pages (about 100,000 characters) of your own material for one host;
+long text is split into pages on import. On a co-host call it joins the notes, so a long one
+is briefed and searched with `check_notes` while you talk. For a written pod, the pages that
+best match the topic (BM25) are added to that host's private notes. There are no embeddings
+yet: search is by words.
+
+Caller memory is off until the creator turns on "Remember callers". Then each signed-in
+listener who calls a live pod is proposed as a memory for that pod's hosts, and, once approved,
+the writers are told when the same person calls one of those hosts again. The note goes to
+the writers only, never to other listeners.
+
+Memories and notebooks belong to a host by name, so renaming a host leaves them behind.
 
 Memory is on with local storage and off on GCP until `MEMORY_ENABLED=true`
 (`settings.memory_on`), so a deploy does not start writing memories to Firestore.

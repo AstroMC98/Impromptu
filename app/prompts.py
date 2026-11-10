@@ -487,6 +487,9 @@ def _brief(b: ContextBrief) -> str:
 
 def _comment_line(c: ListenerComment) -> str:
     line = f'[#{c.id}] {c.name}: "{c.text}"'
+    if c.returning:
+        line += (f" ({c.name} has called before, and the hosts remember: {c.returning} Greet them as a "
+                 "returning caller in a few words, mention it only if it fits, and don't recite it)")
     if c.attachment:
         line += f" (attached {_brief(c.attachment)})"
     if c.research:

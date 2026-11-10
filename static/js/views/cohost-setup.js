@@ -158,7 +158,10 @@ export async function cohostSetupView(root) {
           <span class="radio-desc">${name} brings what they remember about you, and suggests new things to remember afterwards.
             Nothing is kept until you approve it. ${knows}</span></span>
       </button>
-      <a class="btn link mem-link" href="/memory" data-link>See what's remembered</a>`);
+      <div class="row gap wrap mem-links">
+        <a class="btn link mem-link" href="/memory" data-link>See what's remembered</a>
+        ${state.host.name ? html`<a class="btn link mem-link" href="/notebook?host=${encodeURIComponent(state.host.name)}" data-link>${name}'s notebook</a>` : ""}
+      </div>`);
   };
   const renderTopic = () => {
     $("#topic-label").textContent = wording().label;

@@ -368,6 +368,7 @@ class ListenerComment(BaseModel):
     attachment: ContextBrief | None = None
     research: ContextBrief | None = None     # what the research desk found for it
     research_failed: bool = False            # it looked, and came back empty
+    returning: str = ""                      # what the hosts remember about this caller (memory.py)
 
 
 class SegmentContext(BaseModel):

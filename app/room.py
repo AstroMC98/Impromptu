@@ -33,6 +33,7 @@ from typing import Callable
 
 from fastapi import WebSocket
 
+from . import memory
 from .audio import Mp3Writer, PcmWindow
 from .catalog import PRESETS_BY_ID, accent_for, style_label
 from .clock import LiveClock, RenderClock
@@ -215,6 +216,11 @@ class ShowRoom:
         self.doc = doc
         self.settings = settings
         self.store = store
+        # Caller memory (memory.py), when the creator has "Remember callers" on: who called
+        # in to this show, and what the hosts already remember of earlier callers.
+        self.remember_callers = False
+        self.callers: dict[str, dict] = {}
+        self._known_callers: list[dict] = []
         self.rate = settings.sample_rate
         self._on_closed = on_closed
         # headless: made with nobody listening (a scheduled briefing), as fast as it can go
@@ -421,9 +427,17 @@ class ShowRoom:
         if not conn.comments.take():
             return conn.error("rate_limited", "Easy there. You can call in again in a few seconds.")
         # Call-ins go out under the account's name, never a name the client picks.
-        _, err = self.runner.add_comment(
-            conn.name, str(msg.get("text", "")), conn.role, client_id=str(msg.get("client_id", "")),
+        text = str(msg.get("text", ""))
+        returning = ""
+        if self.remember_callers and conn.uid and conn.role != "producer":
+            returning = memory.returning(self._known_callers, conn.uid, self._host_names())
+        made, err = self.runner.add_comment(
+            conn.name, text, conn.role, client_id=str(msg.get("client_id", "")), returning=returning,
         )
+        if made is not None and self.remember_callers and conn.uid and conn.role != "producer":
+            said = self.callers.setdefault(conn.uid, {"name": conn.name, "said": []})["said"]
+            if made.text not in said:
+                said.append(made.text)
         if err == "line_full":
             conn.error("line_full", "The lines are full right now. Try again in a minute.")
 
@@ -554,7 +568,34 @@ class ShowRoom:
         if self._runner_task and not self._runner_task.done():
             self._runner_task.cancel()
 
+    def _host_names(self) -> list[str]:
+        return [h.get("name", "") for h in self.doc.get("hosts", []) if isinstance(h, dict)]
+
+    async def _load_caller_memory(self) -> None:
+        """Is "Remember callers" on for this show's creator, and whom do they remember?"""
+        if not self.settings.memory_on:
+            return
+        try:
+            owner = await self.store.get_user(self.doc.get("owner_uid") or "") or {}
+            if owner.get("remember_callers"):
+                self.remember_callers = True
+                self._known_callers = await memory.kept_callers(self.store, self.doc.get("owner_uid") or "")
+        except Exception:
+            log.exception("show %s: couldn't load caller memory", self.id)
+
+    async def _remember_callers(self) -> None:
+        if not (self.remember_callers and self.callers):
+            return
+        try:
+            added = await memory.propose_callers(
+                self.store, self.doc.get("owner_uid") or "", self.callers, hosts=self._host_names(),
+                show_id=self.id, show_title=self.doc.get("title") or "a pod")
+            log.info("show %s: %d caller memories proposed", self.id, added)
+        except Exception:
+            log.exception("show %s: couldn't propose caller memories", self.id)
+
     async def _run(self) -> None:
+        await self._load_caller_memory()
         if self._intro:
             self.push_audio(0, self._intro)   # seq 0: audio before the first segment
         self._runner_task = asyncio.create_task(self.runner.run())
@@ -612,6 +653,7 @@ class ShowRoom:
         if audio:
             self.saved = {"audio_url": f"/api/shows/{self.id}/audio", "duration": duration}
             self._broadcast(json.dumps({"type": "saved", **self.saved}))
+        await self._remember_callers()
         self.finalized.set()
         log.info("show %s ended (%s), %.0fs of audio", self.id, reason, duration)
 

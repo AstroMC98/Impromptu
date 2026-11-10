@@ -115,6 +115,7 @@ from fastapi.staticfiles import StaticFiles
 from . import ingest as ingest_mod
 from . import memo as memo_mod
 from . import memory
+from . import notebook
 from . import notes as notes_mod
 from .accounts import Accounts, User, published
 from .auth import COOKIE, SESSION_MAX_AGE, Auth, AuthError, client_ip, same_origin
@@ -134,7 +135,8 @@ from .limits import (
 from .llm import Gemini
 from .mixer import intro_sting
 from .models import (
-    AlbumIn, CohostNotes, ContextItem, MemoOptions, NewCohost, NewShow, Organize, PersonaIn, ProduceMemo,
+    NOTES_CHARS, AlbumIn, CohostNotes, ContextItem, HostRequest, MemoOptions, NewCohost, NewShow, Organize,
+    PersonaIn, ProduceMemo,
     ShareSettings, ShowIntroIn, ShowRequest, StyleIn,
 )
 from .music import MINE, Library, theme_for
@@ -631,6 +633,7 @@ async def favicon() -> FileResponse:
 @app.get("/login")
 @app.get("/personas")
 @app.get("/memory")
+@app.get("/notebook")
 @app.get("/styles")
 @app.get("/connections")
 @app.get("/admin")
@@ -853,6 +856,97 @@ def _saved_item_routes(kind: str, model: type[BaseModel], noun: str) -> None:
 _saved_item_routes("personas", PersonaIn, "persona")
 
 
+# ---- notebooks: pages a host can draw on (notebook.py) ----------------------------------
+
+class PageIn(BaseModel):
+    host: str = Field(min_length=1, max_length=40)
+    title: str = Field(default="", max_length=notebook.TITLE_CHARS * 2)
+    text: str = Field(min_length=1, max_length=notebook.MAX_CHARS)
+
+
+class PageEdit(BaseModel):
+    title: str = Field(default="", max_length=notebook.TITLE_CHARS * 2)
+    text: str = Field(min_length=1, max_length=notebook.PAGE_CHARS)
+
+
+async def _with_notebooks(uid: str, hosts: list[HostRequest], about: str) -> list[HostRequest]:
+    """Each named host with a notebook gets its most relevant pages in their private notes."""
+    out = []
+    for h in hosts:
+        book = await notebook.pages(store, uid, h.name) if h.name.strip() else []
+        room = NOTES_CHARS - len(h.context) - 40
+        if book and room > 500:
+            found = notebook.relevant(book, about, room)
+            if found:
+                h = h.model_copy(update={"context": (f"{h.context.strip()}\n\nFrom their notebook:\n{found}".strip())[:NOTES_CHARS]})
+        out.append(h)
+    return out
+
+
+@app.get("/api/notebooks")
+async def list_notebooks(request: Request) -> dict:
+    user = await require_user(request)
+    return {"notebooks": await notebook.shelves(store, user.uid) if settings.memory_on else []}
+
+
+@app.get("/api/notebook")
+async def get_notebook(request: Request, host: str = "") -> dict:
+    user = await require_user(request)
+    _require_memory()
+    book = await notebook.pages(store, user.uid, host)
+    return {"host": " ".join(host.split())[:40], "pages": book, **notebook.size(book)}
+
+
+@app.post("/api/notebook")
+async def add_pages(body: PageIn, request: Request) -> dict:
+    """Write a page, or import a document: text longer than a page becomes several."""
+    _require_memory()
+    _require_origin(request)
+    user = await require_user(request)
+    try:
+        made = await notebook.add(store, user.uid, body.host, body.title, body.text)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    book = await notebook.pages(store, user.uid, body.host)
+    return {"added": made, "pages": book, **notebook.size(book)}
+
+
+async def _page(uid: str, page_id: str) -> dict:
+    found = next((p for p in await store.list_items(uid, notebook.KIND) if p["id"] == page_id), None)
+    if not found:
+        raise HTTPException(status_code=404, detail="No such page.")
+    return found
+
+
+@app.put("/api/notebook/{page_id}")
+async def edit_page(page_id: str, body: PageEdit, request: Request) -> dict:
+    _require_memory()
+    _require_origin(request)
+    user = await require_user(request)
+    page = await _page(user.uid, page_id)
+    text = notebook.clean_text(body.text)
+    if not text:
+        raise HTTPException(status_code=422, detail="A page can't be empty. Remove it instead.")
+    book = await notebook.pages(store, user.uid, page.get("host", ""))
+    others = sum(len(p.get("text", "")) for p in book if p["id"] != page_id)
+    if others + len(text) > notebook.MAX_CHARS:
+        raise HTTPException(status_code=422, detail="That would go past what a notebook holds.")
+    page = {**page, "title": notebook.clean_title(body.title) or page.get("title", ""), "text": text,
+            "updated_at": time.time()}
+    await store.put_item(user.uid, notebook.KIND, page)
+    return page
+
+
+@app.delete("/api/notebook/{page_id}")
+async def delete_page(page_id: str, request: Request) -> dict:
+    _require_memory()
+    _require_origin(request)
+    user = await require_user(request)
+    await _page(user.uid, page_id)
+    await store.delete_item(user.uid, notebook.KIND, page_id)
+    return {"ok": True}
+
+
 # ---- memory: what your co-hosts remember about you (memory.py) -------------------------
 
 class MemoryIn(BaseModel):
@@ -889,8 +983,25 @@ async def _room_for_memory(uid: str) -> None:
 async def list_memories(request: Request) -> dict:
     user = await require_user(request)
     if not settings.memory_on:
-        return {"pending": [], "kept": []}
-    return memory.split(await memory.all_items(store, user.uid))
+        return {"pending": [], "kept": [], "remember_callers": False}
+    doc = await store.get_user(user.uid) or {}
+    return {**memory.split(await memory.all_items(store, user.uid)),
+            "remember_callers": bool(doc.get("remember_callers"))}
+
+
+class MemorySettings(BaseModel):
+    remember_callers: bool
+
+
+@app.put("/api/memories/settings")
+async def memory_settings(body: MemorySettings, request: Request) -> dict:
+    """Remember callers: off unless you turn it on. Only signed-in callers, only for the
+    hosts of the show they called, and only once you approve each one."""
+    _require_memory()
+    _require_origin(request)
+    user = await require_user(request)
+    await store.update_user(user.uid, {"remember_callers": body.remember_callers})
+    return {"remember_callers": body.remember_callers}
 
 
 @app.post("/api/memories")
@@ -925,7 +1036,7 @@ async def edit_memory(memory_id: str, body: MemoryEdit, request: Request) -> dic
         if not text:
             raise HTTPException(status_code=422, detail="A memory can't be empty. Remove it instead.")
         item["text"] = text
-    if body.scope is not None:
+    if body.scope is not None and item.get("scope") != "caller":
         item["scope"] = body.scope if body.scope == "shared" or item.get("host_key") else "shared"
     item["updated_at"] = time.time()
     await store.put_item(user.uid, memory.KIND, item)
@@ -1516,6 +1627,8 @@ async def create_show(body: NewShow, request: Request) -> dict:
             "Listening, calling in and connecting are free."
         ))
     source = req.source[: settings.max_source_chars]
+    if settings.memory_on:
+        req = req.model_copy(update={"hosts": await _with_notebooks(user.uid, req.hosts, f"{source[:4000]}\n{req.style}")})
     model = _check_capacity() if body.live else None
     show_id = secrets.token_urlsafe(9)
     now = time.time()
@@ -1621,6 +1734,11 @@ async def create_cohost(body: NewCohost, request: Request) -> dict:
     # Long notes: the co-host gets their brief (usually written while you set up, see
     # cohost_notes) and searches all of them; without a brief, their first part.
     notes = req.notes[: settings.cohost_notes_max_chars]
+    if settings.memory_on:
+        book = notebook.as_text(await notebook.pages(store, user.uid, host.name))
+        if book:
+            notes = (f"FROM {host.name.upper()}'S NOTEBOOK:\n{book}"
+                     + (f"\n\nNOTES FOR THIS CALL:\n{notes}" if notes.strip() else ""))[: settings.cohost_notes_max_chars]
     given, index, brief = notes, None, None
     if len(notes) > settings.cohost_source_chars:
         brief = await briefs.get(user.uid, notes, lambda: model.brief_notes(notes),

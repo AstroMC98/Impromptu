@@ -54,6 +54,13 @@ export const api = {
   addMemory: (item) => call("POST", "/api/memories", { json: item }),
   editMemory: (memoryId, fields) => call("PUT", `/api/memories/${id(memoryId)}`, { json: fields }),
   forgetMemory: (memoryId) => call("DELETE", `/api/memories/${id(memoryId)}`),
+  memorySettings: (fields) => call("PUT", "/api/memories/settings", { json: fields }),
+  // notebooks: pages a host can draw on
+  notebooks: () => call("GET", "/api/notebooks"),
+  notebook: (host) => call("GET", `/api/notebook?host=${id(host)}`),
+  addPages: (page) => call("POST", "/api/notebook", { json: page }),
+  editPage: (pageId, page) => call("PUT", `/api/notebook/${id(pageId)}`, { json: page }),
+  removePage: (pageId) => call("DELETE", `/api/notebook/${id(pageId)}`),
   // connections
   connections: () => call("GET", "/api/connections"),
   connect: (target) => call("POST", "/api/connections", { json: target }),

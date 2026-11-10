@@ -9,8 +9,13 @@ of them, and go into the co-host's instructions on the next call that has memory
 Memories are saved items of kind "memories" (store.list_items / put_item), so they work
 on every store with no new collection code:
 
-    {id, text, status: "pending" | "kept", scope: "host" | "shared", host, host_key,
-     show_id, show_title, created_at, updated_at}
+    {id, text, status: "pending" | "kept", scope: "host" | "shared" | "caller", host,
+     host_key, show_id, show_title, created_at, updated_at}
+
+Caller memory is the same thing pointed the other way: with "Remember callers" on, a
+signed-in listener who calls in to one of your live pods is proposed as a memory for
+that pod's hosts (scope "caller", with caller_uid, caller_name and host_keys). Once you
+approve it, those hosts are told so when the same person calls one of their shows again.
 
 Small on purpose: a list this size fits in the prompt whole, so there's no search yet.
 """
@@ -31,6 +36,8 @@ MAX_PENDING = 40           # proposals waiting for a swipe; the oldest drop off 
 PER_CALL = 6               # proposals one call can make
 PROMPT_ITEMS = 40          # memories a co-host is handed for one call
 SCOPES = ("host", "shared")
+CALLERS_PER_SHOW = 8       # callers one show can propose
+CALLER_NOTES = 3           # what a host is told about a returning caller, at most
 
 
 def host_key(name: str) -> str:
@@ -72,6 +79,46 @@ def new_item(text: str, *, status: str, scope: str, host: str, show_id: str = ""
         "host": " ".join(str(host or "").split())[:40], "host_key": host_key(host),
         "show_id": show_id, "show_title": show_title[:80], "created_at": time.time(),
     }
+
+
+async def propose_callers(store: Store, uid: str, callers: dict[str, dict], *, hosts: list[str], show_id: str,
+                          show_title: str) -> int:
+    """After a live pod: one proposal per signed-in caller, for that pod's hosts.
+    callers: {caller_uid: {"name": ..., "said": [what they asked]}}."""
+    names = [" ".join(h.split())[:40] for h in hosts if h and h.strip()]
+    if not names:
+        return 0
+    known = [m["text"] for m in await all_items(store, uid)]
+    added = 0
+    for caller_uid, c in list(callers.items())[:CALLERS_PER_SHOW]:
+        asked = clean_text(" / ".join(c.get("said", [])[:2]))[:150]
+        name = " ".join(str(c.get("name", "")).split())[:40]
+        if not asked or not name or not caller_uid:
+            continue
+        text = clean_text(f'{name} called in to "{show_title[:50]}" and asked: {asked}')
+        if any(_same(text, k) for k in known):
+            continue
+        item = new_item(text, status="pending", scope="host", host=" and ".join(names), show_id=show_id,
+                        show_title=show_title)
+        item.update({"scope": "caller", "caller_uid": caller_uid, "caller_name": name,
+                     "host_keys": [host_key(n) for n in names]})
+        await store.put_item(uid, KIND, item)
+        known.append(text)
+        added += 1
+    return added
+
+
+async def kept_callers(store: Store, uid: str) -> list[dict]:
+    """Every approved caller memory of this account (a live pod loads them once)."""
+    return [m for m in await all_items(store, uid) if m.get("status") == "kept" and m.get("scope") == "caller"]
+
+
+def returning(kept: list[dict], caller_uid: str, hosts: list[str]) -> str:
+    """What this show's hosts remember about a caller, or ""."""
+    keys = {host_key(h) for h in hosts if h}
+    mine = [m["text"] for m in kept
+            if m.get("caller_uid") == caller_uid and keys & set(m.get("host_keys", []))]
+    return " ".join(mine[:CALLER_NOTES])
 
 
 async def propose(store: Store, uid: str, found: list[dict], *, host: str, show_id: str, show_title: str) -> int:
