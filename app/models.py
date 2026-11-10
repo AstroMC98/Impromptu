@@ -396,7 +396,7 @@ class SegmentContext(BaseModel):
 
 # ---- Co-hosting: you talk live with an AI co-host (see cohost.py) ------------
 
-CohostMode = Literal["banter", "interview", "debate", "roleplay"]
+CohostMode = Literal["banter", "interview", "debate", "roleplay", "educate"]
 
 
 class CohostRequest(BaseModel):

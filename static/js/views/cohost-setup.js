@@ -123,7 +123,7 @@ export async function cohostSetupView(root) {
   const offHead = bindHeader(el);
   const $ = (s) => el.querySelector(s);
   const rules = mountRules($("[data-rules]"), saved.rules);
-  // Roleplay asks for a scene, not a topic.
+  // Roleplay asks for a scene and Educate for something to learn, not a topic.
   const TOPIC = {
     label: "What are you two talking about?",
     hint: "Is sourdough worth the hassle? Or: the best and worst calls of last night's game.",
@@ -134,7 +134,12 @@ export async function cohostSetupView(root) {
     hint: "A job interview at a design studio. You're the hiring manager, I'm the candidate, and you're hard to impress.",
     missing: "Set the scene: where you are and who plays whom.",
   };
-  const wording = () => (state.mode === "roleplay" ? SCENE : TOPIC);
+  const LESSON = {
+    label: "What do you want to learn?",
+    hint: "How mortgages work. I'm buying my first flat and I know nothing about interest rates.",
+    missing: "Say what you want to learn, even just a few words.",
+  };
+  const wording = () => ({ roleplay: SCENE, educate: LESSON })[state.mode] || TOPIC;
   const renderTopic = () => {
     $("#topic-label").textContent = wording().label;
     $("#topic").placeholder = wording().hint;

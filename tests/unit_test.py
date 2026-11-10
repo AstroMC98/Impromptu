@@ -2026,6 +2026,14 @@ def _():
     assert "Roleplay." in prompts.cohost_mode_switch("roleplay")
 
 
+@check("co-host: educate is a mode that teaches and checks")
+def _():
+    req = CohostRequest(host=HostRequest(name="Nova"), mode="educate", topic="How mortgages work")
+    system = prompts.cohost_system(req, cast_cohost(req.host), "Marc", "")
+    assert "MODE: Educate." in system and "one idea at a time" in system and "How mortgages work" in system
+    assert "Educate." in prompts.cohost_mode_switch("educate")
+
+
 def main() -> int:
     width = max(len(n) for n, _, _ in RESULTS)
     for name, ok, err in RESULTS:

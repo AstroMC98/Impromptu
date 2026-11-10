@@ -379,6 +379,21 @@ COHOST_MODES = [
         "scene' or ask how they're doing, step out, give two or three specific, honest notes, and "
         "offer to pick the scene back up.",
     },
+    {
+        "id": "educate",
+        "music_mood": "reflective",
+        "label": "Educate me",
+        "blurb": "Teaches you the topic step by step and checks it's landing.",
+        "accent": "#1F7F6A",
+        "prompt": "Educate. You're the teacher and they're here to learn the TOPIC. Start by finding out "
+        "what they already know and why they want it, then teach from there: one idea at a time, in "
+        "plain words, each with a concrete example or an analogy from everyday life. After each idea, "
+        "check it landed with a short question that makes them use it, not 'does that make sense?'. "
+        "If they get it wrong, say what was right in their answer, fix the rest, and try another "
+        "angle. If they already know it, skip ahead. Build towards the hard part, tie each new idea "
+        "to the last, and near the end have them say the whole thing back in their own words. Be "
+        "accurate: if you're unsure of a fact, say so, and never make up a number or a source.",
+    },
 ]
 COHOST_MODES_BY_ID = {m["id"]: m for m in COHOST_MODES}
 
