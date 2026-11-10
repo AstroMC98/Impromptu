@@ -413,7 +413,7 @@ export async function createView(root, { query }) {
       ${data.personas.length ? html`
         <p class="faint small">Yours</p>
         <div class="chips">${data.personas.map((p) => html`<button type="button" class="chip" data-persona="${p.id}">${p.name}</button>`)}</div>` : ""}
-      <p class="faint small">Premade</p>
+      <p class="faint small">The cast</p>
       <div class="chips">${presets.map((p) => html`<button type="button" class="chip" data-preset="${p.id}">${p.name}</button>`)}</div>
       ${personaFields(h, { prefix: "host", required: false })}
       <label class="check-row"><input type="checkbox" name="save"><span>Save to my personas</span></label>

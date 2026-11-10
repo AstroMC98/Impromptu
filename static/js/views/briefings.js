@@ -489,7 +489,7 @@ export async function briefingsView(root) {
       ${t.hosts[i] ? html`<option value="keep:${i}" ${selected === `keep:${i}` ? "selected" : ""}>${t.hosts[i].name} (as is)</option>` : ""}
       ${st.personas.length ? html`<optgroup label="Your personas">${st.personas.map((p) => html`
         <option value="p:${p.id}" ${selected === `p:${p.id}` ? "selected" : ""}>${p.name}</option>`)}</optgroup>` : ""}
-      <optgroup label="Premade personas">${(session.options.persona_presets || []).map((p) => html`
+      <optgroup label="The cast">${(session.options.persona_presets || []).map((p) => html`
         <option value="x:${p.id}" ${selected === `x:${p.id}` ? "selected" : ""}>${p.name}</option>`)}</optgroup>`;
     const presetMatch = presets.find((p) => p.id === t.vibe || p.prompt === t.style);
     const styleInit = presetMatch ? `v:${presetMatch.id}` : t.style ? "custom" : `v:${presets[0]?.id}`;

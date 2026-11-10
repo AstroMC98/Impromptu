@@ -125,11 +125,7 @@ TEMPLATES = [
         "what kind of study supports each claim and where the evidence is thin, recaps with 'so, to pause "
         "on that', and closes each section with practical, low-risk protocols. Never gives personal "
         "medical advice.",
-        "hosts": [
-            {"name": "Dr. Elena Vance", "voice": "Erinome", "gender": "female",
-             "persona": "A neuroscientist and educator who loves mechanisms, cites the evidence behind every "
-             "claim, and always ends with practical protocols; calm, precise, generous with caveats."},
-        ],
+        "cast": [("neuroscientist", "")],
     },
     {
         "id": "couple-chat",
@@ -140,13 +136,7 @@ TEMPLATES = [
         "style": "A warm husband-and-wife podcast recorded at the kitchen table. Inside jokes, gentle "
         "teasing, finishing each other's sentences, real-life stories from their marriage that tie back to "
         "the topic, one of them always going off on tangents and the other reeling them back in.",
-        "hosts": [
-            {"name": "Mia", "voice": "Aoede", "gender": "female",
-             "persona": "The wife: quick, playful, loves a dramatic retelling, teases her husband but always "
-             "has his back."},
-            {"name": "Jordan", "voice": "Algieba", "gender": "male",
-             "persona": "The husband: dry humor, goes on tangents, secretly the more romantic one."},
-        ],
+        "cast": [("mia", ""), ("jordan", "")],
     },
     {
         "id": "inspirational",
@@ -157,11 +147,7 @@ TEMPLATES = [
         "style": "An inspirational keynote talk. Opens with a vivid personal story, uses short punchy lines "
         "and memorable metaphors, pauses for effect, builds energy section by section, and ends with a "
         "clear, uplifting call to action. Earnest, never cheesy.",
-        "hosts": [
-            {"name": "Grace Okafor", "voice": "Sulafat", "gender": "female",
-             "persona": "A motivational speaker who overcame real setbacks; warm, grounded, builds to "
-             "powerful crescendos."},
-        ],
+        "cast": [("speaker", "")],
     },
     {
         "id": "girl-talk",
@@ -172,12 +158,7 @@ TEMPLATES = [
         "style": "Two best friends having real talk on the couch: candid, funny, supportive, honest about "
         "feelings, hyping each other up, gasping at the juicy parts, and always landing on practical "
         "advice a friend would actually give.",
-        "hosts": [
-            {"name": "Kayla", "voice": "Leda", "gender": "female",
-             "persona": "The hype woman: big reactions, lives for the drama, fiercely loyal."},
-            {"name": "Nia", "voice": "Laomedeia", "gender": "female",
-             "persona": "The voice of reason: sharp, practical, gives the advice you need to hear."},
-        ],
+        "cast": [("hype-bestie", ""), ("voice-of-reason", "")],
     },
     {
         "id": "mens-talk",
@@ -188,12 +169,7 @@ TEMPLATES = [
         "style": "Two guys talking straight about discipline, purpose, health, relationships and "
         "brotherhood. Direct, grounded, no fluff, gym-and-garage energy, honest about struggles, "
         "respectful of everyone, and always ending with concrete takeaways.",
-        "hosts": [
-            {"name": "Marcus", "voice": "Orus", "gender": "male",
-             "persona": "A former athlete turned coach: blunt, disciplined, big on accountability."},
-            {"name": "Dre", "voice": "Algenib", "gender": "male",
-             "persona": "The storyteller: laid-back, funny, opens up about the hard stuff."},
-        ],
+        "cast": [("coach", ""), ("dre", "")],
     },
     {
         "id": "debate-night",
@@ -204,11 +180,7 @@ TEMPLATES = [
         "style": "A friendly debate show. Each host takes an opposite side, makes the strongest case, "
         "rebuts the other's points with evidence, concedes good points gracefully, and they finish by "
         "summarizing where they actually agree.",
-        "hosts": [
-            {"name": "Theo", "voice": "Charon", "gender": "male", "persona": "Argues for: methodical, loves data."},
-            {"name": "Ruby", "voice": "Zephyr", "gender": "female",
-             "persona": "Argues against: quick-witted, loves a counterexample."},
-        ],
+        "cast": [("historian", "Argues for the motion: methodical, loves data."), ("comedian", "Argues against the motion: quick-witted, loves a counterexample.")],
     },
     {
         "id": "idea-breakdown",
@@ -220,12 +192,7 @@ TEMPLATES = [
         "friend would ask; the expert unpacks it: where it comes from, what the evidence says, where people "
         "disagree, and what it means day to day. Clear analogies, honest about uncertainty, says where facts "
         "come from, and ends with a few crisp takeaways.",
-        "hosts": [
-            {"name": "Ivy", "voice": "Autonoe", "gender": "female",
-             "persona": "The curious one: quick, warm, asks the obvious question nobody wants to ask."},
-            {"name": "Dr. Ravi Menon", "voice": "Sadaltager", "gender": "male",
-             "persona": "The expert: patient, precise, loves an analogy and admits what isn't known yet."},
-        ],
+        "cast": [("ivy", ""), ("ravi", "")],
     },
 ]
 
@@ -262,7 +229,10 @@ def music_mood_for(vibe: str | None, template: str | None = None) -> str:
 
 # Premade personas anyone can cast as a host, or copy into their own personas and
 # customize. Fictional people, described by what they're like and what they know.
-PERSONA_PRESETS = [
+# The cast: the 18 house hosts. A template's hosts and the premade personas you can pick
+# are the same people, so a host sounds and behaves the same wherever they turn up, and
+# no two share a voice.
+CAST = [
     {"id": "neuroscientist", "name": "Dr. Maya Chen", "gender": "female", "voice": "Erinome",
      "persona": "A neuroscientist and educator: calm, precise, delighted by mechanisms, generous with caveats.",
      "likes": "early mornings, cold plunges, a well-run meta-analysis",
@@ -328,8 +298,50 @@ PERSONA_PRESETS = [
      "likes": "porch evenings, fishing, folk songs",
      "specialties": "folk tales, life lessons, the old days",
      "skills": "bedtime stories, slow reveals, a twinkle in every ending"},
+    {"id": "mia", "name": "Mia", "gender": "female", "voice": "Aoede",
+     "persona": "The wife in a husband-and-wife double act: quick, playful, loves a dramatic retelling, teases "
+     "Jordan but always has his back.",
+     "likes": "true-crime marathons, farmers' markets, winning an argument with a callback",
+     "specialties": "relationships, family life, home, everyday dilemmas",
+     "skills": "telling a story with all the voices, reading the room, landing the punchline"},
+    {"id": "jordan", "name": "Jordan", "gender": "male", "voice": "Algieba",
+     "persona": "The husband in a husband-and-wife double act: dry humor, goes on tangents, secretly the more "
+     "romantic one.",
+     "likes": "over-researching purchases, dad jokes, a slow Sunday",
+     "specialties": "relationships, fatherhood, gadgets, the long way round to a point",
+     "skills": "deadpan asides, odd facts at the right moment, conceding gracefully"},
+    {"id": "dre", "name": "Dre", "gender": "male", "voice": "Fenrir",
+     "persona": "The friend who tells it straight: laid-back, funny, opens up about the hard stuff.",
+     "likes": "barbershop debates, old-school hip-hop, long drives",
+     "specialties": "friendship, work, money pressure, growing up, mental health",
+     "skills": "stories from his own life, making it safe to be honest, a well-timed joke"},
+    {"id": "ivy", "name": "Ivy", "gender": "female", "voice": "Autonoe",
+     "persona": "The curious one: quick, warm, asks the obvious question nobody wants to ask.",
+     "likes": "rabbit holes, whiteboards, a good 'wait, why?'",
+     "specialties": "new ideas, startups, science news, how things get made",
+     "skills": "asking the question the listener has, summing up in a sentence, spotting the catch"},
+    {"id": "ravi", "name": "Dr. Ravi Menon", "gender": "male", "voice": "Rasalgethi",
+     "persona": "The patient expert: precise, loves an analogy, admits what isn't known yet.",
+     "likes": "chalk, long walks, a paper with good methods",
+     "specialties": "research, technology, economics, how to read a study",
+     "skills": "analogies that hold up, separating evidence from hype, saying 'we don't know' plainly"},
 ]
-PERSONA_PRESETS_BY_ID = {p["id"]: p for p in PERSONA_PRESETS}
+PERSONA_PRESETS = CAST          # the name the rest of the app knows the pickable cast by
+PERSONA_PRESETS_BY_ID = {p["id"]: p for p in CAST}
+CAST_BY_ID = PERSONA_PRESETS_BY_ID
+
+
+def _cast_host(cast_id: str, role: str = "") -> dict:
+    """A cast member as a template's host; role is what they do in that show."""
+    c = CAST_BY_ID[cast_id]
+    host = {k: c[k] for k in ("name", "voice", "gender", "persona", "likes", "specialties", "skills")}
+    if role:
+        host["persona"] = f"{c['persona']} In this show: {role}"
+    return {**host, "cast": cast_id}
+
+
+for _t in TEMPLATES:
+    _t["hosts"] = [_cast_host(cast_id, role) for cast_id, role in _t.pop("cast")]
 
 # How the AI co-host plays it when you co-host live. Switchable mid-call.
 COHOST_MODES = [

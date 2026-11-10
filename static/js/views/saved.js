@@ -17,7 +17,7 @@ const KINDS = {
   personas: {
     title: "Personas",
     lede: "Speakers you cast as hosts: who they are, a voice that fits, what they love and know, and private notes only they draw on. Reuse them in any pod.",
-    empty: "No personas yet. Make one, or start from a premade persona below.",
+    empty: "No personas yet. Make one, or start from one of the cast below.",
     noun: "persona",
     card: (p) => personaCard(p),
     form: (p) => personaFields(p),
@@ -65,7 +65,7 @@ export async function savedView(root, { url }) {
       </div>
       <div data-list></div>
       ${kind === "personas" ? html`
-        <h2 class="section-h">Premade personas</h2>
+        <h2 class="section-h">The cast</h2>
         <p class="muted small">Cast them as they are when you create a pod, or copy one here and make it your own.</p>
         <div class="saved-grid" data-presets></div>` : ""}
     </main>`);

@@ -1224,13 +1224,13 @@ def _():
     brief = _brief(format="debate-night", language="Spanish")
     intro = {"show_name": "Walk & Talk", "intro_line": "ideas from the sidewalk"}
     r = build_request(brief, MemoOptions(), "SRC", credit="Ana", intro=intro)
-    assert r.style == TEMPLATES_BY_ID["debate-night"]["style"] and [h.name for h in r.hosts] == ["Theo", "Ruby"]
+    assert r.style == TEMPLATES_BY_ID["debate-night"]["style"] and [h.name for h in r.hosts] == ["Professor Arthur Hale", "Zoe Park"]
     assert (r.mode, r.language, r.show_name, r.intro_line) == ("recorded", "Spanish", "Walk & Talk", "ideas from the sidewalk")
     assert "Ana's memo" in r.direction and r.source_names == ["Voice memo by Ana"] and r.minutes == 15
     r = build_request(brief, MemoOptions(template="couple-chat", vibe="gossip"), "SRC", credit="Ana", intro=None)
     assert r.style_label == "Married couple chat" and r.hosts[0].name == "Mia" and r.show_name == ""
     r = build_request(brief, MemoOptions(vibe="gossip"), "SRC", credit="Ana", intro=None)
-    assert r.vibe == "gossip" and r.style == PRESETS_BY_ID["gossip"]["prompt"] and r.hosts[0].name == "Theo"
+    assert r.vibe == "gossip" and r.style == PRESETS_BY_ID["gossip"]["prompt"] and r.hosts[0].name == "Professor Arthur Hale"
     r = build_request(brief, MemoOptions(style="Very calm.", hosts=[{"name": "Solo"}], minutes=5), "SRC",
                       credit="Ana", intro=None)
     assert r.style == "Very calm." and [h.name for h in r.hosts] == ["Solo"] and r.minutes == 5
@@ -1528,6 +1528,23 @@ def _():
     assert all(VOICE_GENDER[h["voice"]] == h["gender"] for h in hosts), [
         h["name"] for h in hosts if VOICE_GENDER[h["voice"]] != h["gender"]]
     assert sum(g == "female" for g in VOICE_GENDER.values()) == 14 and len(VOICE_GENDER) == 30
+
+
+@check("the cast: 18 house hosts, a voice each, and every template is cast from them")
+def _():
+    from app.catalog import CAST, CAST_BY_ID, PERSONA_PRESETS, TEMPLATES, TEMPLATES_BY_ID
+    assert len(CAST) == 18 and PERSONA_PRESETS is CAST
+    assert len({c["voice"] for c in CAST}) == 18 and len({c["name"] for c in CAST}) == 18 and len(CAST_BY_ID) == 18
+    assert all(c[k] for c in CAST for k in ("persona", "likes", "specialties", "skills"))
+    for t in TEMPLATES:
+        assert "cast" not in t and t["hosts"]
+        for h in t["hosts"]:
+            member = CAST_BY_ID[h["cast"]]
+            assert (h["name"], h["voice"], h["gender"]) == (member["name"], member["voice"], member["gender"])
+            HostRequest(**{k: v for k, v in h.items() if k != "cast"})        # fits what a pod is asked for
+    debate = TEMPLATES_BY_ID["debate-night"]["hosts"]
+    assert [h["name"] for h in debate] == ["Professor Arthur Hale", "Zoe Park"]
+    assert debate[0]["persona"].startswith(CAST_BY_ID["historian"]["persona"]) and "Argues for the motion" in debate[0]["persona"]
 
 
 @check("casting: voices follow gender; a voice you pick wins")

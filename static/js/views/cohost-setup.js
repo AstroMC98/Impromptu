@@ -348,7 +348,7 @@ export async function cohostSetupView(root) {
       ${data.personas.length ? html`
         <p class="faint small">Yours</p>
         <div class="chips">${data.personas.map((p) => html`<button type="button" class="chip" data-persona="${p.id}">${p.name}</button>`)}</div>` : ""}
-      <p class="faint small">Premade</p>
+      <p class="faint small">The cast</p>
       <div class="chips">${presets.map((p) => html`<button type="button" class="chip" data-preset="${p.id}">${p.name}</button>`)}</div>
       ${personaFields(state.host, { prefix: "co", required: true })}
       <p class="error" role="alert" data-error></p>
