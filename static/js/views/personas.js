@@ -34,12 +34,41 @@ const shape = (name, size) => {
   return html`<span class="orb" style="--a:color-mix(in oklch, ${c} 42%, #fff);--b:${c};--size:${size}px" aria-hidden="true"></span>`;
 };
 
-/** What goes on the stage for a persona. `tag` is the little label at the top. */
-const onStage = (p, tag) => html`
+/** One sample at a time (static/voices/<Name>.mp3, recorded by tools/build_voice_samples.py).
+ *  `changed` runs whenever what's playing changes, so the screen can show it. */
+function voicePlayer(changed) {
+  const audio = new Audio();
+  audio.preload = "none";
+  const player = {
+    playing: "",
+    stop() {
+      audio.pause();
+      if (player.playing) { player.playing = ""; changed(); }
+    },
+    /** Play this voice, or stop it if it's the one playing. */
+    toggle(voice) {
+      if (!voice || voice === "auto" || player.playing === voice) return player.stop();
+      player.playing = voice;
+      audio.src = `/static/voices/${encodeURIComponent(voice)}.mp3`;
+      audio.play().catch(() => { player.playing = ""; changed(); });
+      changed();
+    },
+    dispose() { audio.pause(); audio.removeAttribute("src"); player.playing = ""; },
+  };
+  audio.addEventListener("ended", () => { player.playing = ""; changed(); });
+  audio.addEventListener("error", () => { if (player.playing) { player.playing = ""; changed(); toast("Couldn't play that voice."); } });
+  return player;
+}
+
+/** What goes on the stage for a persona. `tag` is the little label at the top; `playing`
+ *  is the voice being heard right now, if any. */
+const onStage = (p, tag, playing = "") => html`
   ${material()}
   <span class="intro-air"><i aria-hidden="true"></i>${tag}</span>
   <div class="pstage-who">${shape(p.name, 64)}
-    <span class="col"><strong class="pstage-name">${p.name || "Unnamed host"}</strong><span class="pstage-facts">${facts(p)}</span></span></div>
+    <span class="col grow"><strong class="pstage-name">${p.name || "Unnamed host"}</strong><span class="pstage-facts">${facts(p)}</span></span>
+    ${p.voice && p.voice !== "auto" ? html`<button type="button" class="round-btn pstage-hear ${playing === p.voice ? "on" : ""}" data-hear="${p.voice}"
+      aria-label="${playing === p.voice ? "Stop" : `Hear the ${p.voice} voice`}">${icon(playing === p.voice ? "pause" : "play", 18)}</button>` : ""}</div>
   <p class="pstage-say">${p.persona || "Who are they? Give them an attitude, a quirk, a way of talking."}</p>
   ${bits(p.specialties).length || bits(p.likes).length ? html`<div class="pstage-chips">${bits(p.specialties).concat(bits(p.likes)).slice(0, 6).map((b) => html`<span>${b}</span>`)}</div>` : ""}
   ${p.context ? html`<span class="pstage-notes">${icon("lock", 13)}Has private notes</span>` : ""}`;
@@ -63,6 +92,12 @@ async function browser(root) {
   let picked = null;            // { kind: "mine" | "cast", id }
   let filter = "";
   let dead = false;
+  let sheetStage = null;        // the stage inside the phone sheet while it's open: { node, p, tag }
+  const voice = voicePlayer(() => {
+    if (dead) return;
+    renderStage();
+    if (sheetStage) setHtml(sheetStage.node, onStage(sheetStage.p, sheetStage.tag, voice.playing));
+  });
 
   const el = document.createElement("div");
   el.className = "page-wrap";
@@ -127,7 +162,7 @@ async function browser(root) {
     const p = find(picked);
     if (!p) return;
     applyAccent($("[data-stage]"), callerColor(p.name));
-    setHtml($("[data-stage]"), onStage(p, picked.kind === "mine" ? "Yours" : "The cast"));
+    setHtml($("[data-stage]"), onStage(p, picked.kind === "mine" ? "Yours" : "The cast", voice.playing));
     setHtml($("[data-acts]"), acts(p, picked.kind));
   };
   const render = () => {
@@ -146,10 +181,13 @@ async function browser(root) {
     body.className = "pstage-sheet";
     setHtml(body, html`<div class="intro-stage stage pstage">${onStage(p, kind === "mine" ? "Yours" : "The cast")}</div><div class="pstage-acts">${acts(p, kind)}</div>`);
     applyAccent(body.querySelector(".pstage"), callerColor(p.name));
-    const sheet = openSheet({ title: p.name, body });
+    sheetStage = { node: body.querySelector(".pstage"), p, tag: kind === "mine" ? "Yours" : "The cast" };
+    const sheet = openSheet({ title: p.name, body, onClose: () => { sheetStage = null; voice.stop(); } });
     body.addEventListener("click", (e) => {
       const del = e.target.closest("[data-delete]");
-      if (del) remove(del.dataset.delete, () => sheet.close());
+      const hear = e.target.closest("[data-hear]");
+      if (hear) voice.toggle(hear.dataset.hear);
+      else if (del) remove(del.dataset.delete, () => sheet.close());
       else if (e.target.closest("a[data-link]")) sheet.close();
     });
   };
@@ -159,13 +197,18 @@ async function browser(root) {
     const f = t.closest("[data-filter]");
     const pick = t.closest("[data-pick]");
     const del = t.closest("[data-delete]");
-    if (f) {
+    const hear = t.closest("[data-hear]");
+    if (hear) {
+      voice.toggle(hear.dataset.hear);
+      el.querySelector("[data-hear]")?.focus({ preventScroll: true });
+    } else if (f) {
       filter = f.dataset.filter;
       for (const b of el.querySelectorAll("[data-filter]")) b.setAttribute("aria-pressed", String(b === f));
       render();
     } else if (pick) {
       const [kind, id] = [pick.dataset.pick.slice(0, pick.dataset.pick.indexOf(":")), pick.dataset.pick.slice(pick.dataset.pick.indexOf(":") + 1)];
       picked = { kind, id };
+      voice.stop();
       render();
       el.querySelector(`[data-pick="${CSS.escape(pick.dataset.pick)}"]`)?.focus({ preventScroll: true });
       if (!wide()) openOnPhone(find(picked), kind);
@@ -176,7 +219,7 @@ async function browser(root) {
 
   render();
   api.list("personas").then((r) => { mine = r.items || []; render(); }).catch(() => { mine = []; render(); });
-  return { unmount() { dead = true; offHead(); } };
+  return { unmount() { dead = true; voice.dispose(); offHead(); } };
 }
 
 // ---- making or editing one --------------------------------------------------------------
@@ -217,6 +260,7 @@ async function editor(root, { id, from }) {
           <h2 class="create-h2">Their voice</h2>
           <input type="hidden" id="p-gender" value="${state.gender}">
           <input type="hidden" id="p-voice" value="${state.voice}">
+          <p class="muted small">Tap a voice to pick it and hear it.</p>
           <div class="chips" role="radiogroup" aria-label="Gender" data-genders></div>
           <div class="vtile-grid" role="radiogroup" aria-label="Voice" data-voices></div>
         </section>
@@ -272,6 +316,12 @@ async function editor(root, { id, from }) {
   const $ = (s) => el.querySelector(s);
   const form = $("[data-form]");
   bindPersonaForm(form);      // the notes tools; gender and voice are tiles here
+  let dead = false;
+  const voice = voicePlayer(() => {
+    if (dead) return;
+    for (const b of el.querySelectorAll("[data-voice]")) b.classList.toggle("playing", b.dataset.voice === voice.playing);
+    renderStage();
+  });
 
   const renderVoices = () => {
     $("#p-gender").value = state.gender;
@@ -282,13 +332,13 @@ async function editor(root, { id, from }) {
       <button type="button" role="radio" class="vtile" data-voice="auto" aria-checked="${state.voice === "auto" ? "true" : "false"}">
         <strong>Auto</strong><span>${state.gender ? `A ${state.gender} voice picked` : "Picked"} to fit the style</span></button>
       ${session.voices(state.gender).map((v) => html`
-        <button type="button" role="radio" class="vtile" data-voice="${v.name}" aria-checked="${state.voice === v.name ? "true" : "false"}">
-          <strong>${v.name}</strong><span>${v.character}${state.gender ? "" : ` · ${v.gender}`}</span></button>`)}`);
+        <button type="button" role="radio" class="vtile ${voice.playing === v.name ? "playing" : ""}" data-voice="${v.name}" aria-checked="${state.voice === v.name ? "true" : "false"}">
+          <strong>${v.name}<i class="vtile-eq" aria-hidden="true"><b></b><b></b><b></b></i></strong><span>${v.character}${state.gender ? "" : ` · ${v.gender}`}</span></button>`)}`);
   };
   const renderStage = () => {
     const p = readPersona(form);
     applyAccent($("[data-stage]"), callerColor(p.name || "?"));
-    setHtml($("[data-stage]"), onStage(p, "On the mic"));
+    setHtml($("[data-stage]"), onStage(p, "On the mic", voice.playing));
   };
 
   el.addEventListener("input", renderStage);
@@ -297,9 +347,13 @@ async function editor(root, { id, from }) {
     const g = t.closest("[data-gender]");
     const v = t.closest("[data-voice]");
     const starter = t.closest("[data-starter]");
-    if (g) {
+    const hear = t.closest("[data-hear]");
+    if (hear) {
+      voice.toggle(hear.dataset.hear);
+      el.querySelector("[data-hear]")?.focus({ preventScroll: true });
+    } else if (g) {
       state.gender = g.dataset.gender;
-      if (state.voice !== "auto" && state.gender && session.voiceGender(state.voice) !== state.gender) state.voice = "auto";
+      if (state.voice !== "auto" && state.gender && session.voiceGender(state.voice) !== state.gender) { state.voice = "auto"; voice.stop(); }
       renderVoices();
       renderStage();
       el.querySelector(`[data-gender="${state.gender}"]`)?.focus();
@@ -308,6 +362,7 @@ async function editor(root, { id, from }) {
       state.gender = session.voiceGender(state.voice) || state.gender;
       renderVoices();
       renderStage();
+      voice.toggle(state.voice);      // picking a voice lets you hear it; tap it again to stop
       el.querySelector(`[data-voice="${CSS.escape(state.voice)}"]`)?.focus({ preventScroll: true });
     } else if (starter) {
       const area = $("#p-persona");
@@ -333,5 +388,5 @@ async function editor(root, { id, from }) {
 
   renderVoices();
   renderStage();
-  return { unmount() { offHead(); } };
+  return { unmount() { dead = true; voice.dispose(); offHead(); } };
 }

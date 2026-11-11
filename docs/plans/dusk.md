@@ -153,6 +153,8 @@ wide window, in a sheet on a phone). Making or editing one (`/personas?edit=new`
 `?edit=<id>`, `?from=<cast id>`) is a page of choices: name, gender and voice as tiles,
 personality with starters, traits, private notes, with the stage showing them as you go.
 The host editor on New pod and the Styles page still use the shared fields in a sheet.
+Tapping a voice tile picks it and plays its sample, and the stage has a play button;
+the samples are `static/voices/<Name>.mp3`, recorded once by `tools/build_voice_samples.py`.
 
 Panels that were a form in a white box (`.page .card`, apart from the topic box, the memo
 recorder and the credit card) are open sections on the page like New pod, and the saved
