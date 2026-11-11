@@ -100,7 +100,6 @@
   .beat-tools .icon-btn:disabled { opacity: .3; cursor: default; }
 
   /* ---- your show intro ------------------------------------------------------------------- */
-  .intro-form .radio-cards { max-height: 420px; overflow-y: auto; }
   .intro-preview { font-size: 15px; color: var(--fg-2); font-style: italic; }
   .intro-preview:empty { display: none; }
 

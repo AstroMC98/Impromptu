@@ -447,3 +447,33 @@ def language_code(language: str) -> str | None:
     """"English" -> "en"; a code given as is ("en-PH") passes through; anything else: None."""
     name = language.strip()
     return LANGUAGE_CODES.get(name.lower()) or (name if _BCP47.match(name) else None)
+
+
+# ---- show intros: how the hosts open ------------------------------------------------
+# A saved show intro picks one. `sample` is what the intro page shows ({show} and {line}
+# are filled in there); `direction` is what the planner and a co-host are told. "warm" is
+# the plain welcome the prompts already ask for, so it adds nothing.
+INTRO_OPENINGS = [
+    {"id": "warm", "label": "Warm welcome", "blurb": "Friendly and easy, like greeting a regular.",
+     "accent": "#B5521C", "sample": "Hey, welcome to {show}{line}. Good to have you.", "direction": ""},
+    {"id": "cold", "label": "Cold open", "blurb": "Straight into the hook. The show's name comes after it lands.",
+     "accent": "#2E6F9E", "sample": "\u2026and that's when it all went sideways. This is {show}{line}.",
+     "direction": "Make it a cold open: begin mid-thought on the hook with no greeting at all, and only once it "
+                  "has landed say the show's name and welcome the listeners."},
+    {"id": "announcer", "label": "Radio announcer", "blurb": "Big, classic broadcast energy.",
+     "accent": "#B8336A", "sample": "From wherever you're listening, this\u2026 is {show}{line}!",
+     "direction": "Open like a classic radio announcer: a big, confident station-style welcome that builds to "
+                  "the show's name, then relax into your own voice for the rest."},
+    {"id": "news", "label": "News desk", "blurb": "One crisp headline, then the welcome.",
+     "accent": "#2F6BD0", "sample": "Tonight on {show}: the story everyone keeps asking about.",
+     "direction": "Open like a news desk: one crisp headline sentence about today's episode that names the "
+                  "show, then a brief welcome."},
+    {"id": "late", "label": "Late night", "blurb": "Low, unhurried, a little wry.",
+     "accent": "#6A4FB0", "sample": "It's late, you're still up, and this is {show}{line}.",
+     "direction": "Open like late-night radio: low, unhurried and a little wry, as if talking to one person "
+                  "who is still awake."},
+    {"id": "hype", "label": "Hype", "blurb": "Loud, fast, all energy from the first word.",
+     "accent": "#1F7F6A", "sample": "Let's go! You're locked in to {show}{line}!",
+     "direction": "Open with hype: loud, fast and excited from the first word, like the start of a big game."},
+]
+INTRO_OPENINGS_BY_ID = {o["id"]: o for o in INTRO_OPENINGS}

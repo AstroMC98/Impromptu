@@ -2232,6 +2232,25 @@ def _():
     assert "1. L1," in text and "2. L2," in text and "3. L1," in text and "u1" not in text
 
 
+@check("show intro: the opening you pick reaches the planner and a co-host, and a plain welcome adds nothing")
+def _():
+    from app.catalog import INTRO_OPENINGS, INTRO_OPENINGS_BY_ID
+    from app.models import ShowIntroIn
+
+    assert [o["id"] for o in INTRO_OPENINGS][0] == "warm" and len(INTRO_OPENINGS_BY_ID) == len(INTRO_OPENINGS) >= 5
+    for o in INTRO_OPENINGS:
+        assert "{show}" in o["sample"] and o["label"] and o["blurb"] and o["accent"].startswith("#")
+    assert prompts.intro_opening("warm") == "" and prompts.intro_opening("nope") == "" and prompts.intro_opening("") == ""
+    assert "cold open" in prompts.intro_opening("cold")
+    assert ShowIntroIn(show_name="Walk").opening == "warm"
+    host = [{"name": "Mia"}]
+    plain = prompts.planner_system(ShowRequest(source="x", style="y", hosts=host, show_name="Walk"), "x", 0)
+    late = prompts.planner_system(ShowRequest(source="x", style="y", hosts=host, show_name="Walk", intro_style="late"), "x", 0)
+    assert "late-night radio" in late and "late-night radio" not in plain
+    assert "news desk" in prompts.cohost_opening("Marc", 10, "Walk", "", opening="news")
+    assert "news desk" not in prompts.cohost_opening("Marc", 10, "Walk", "")
+
+
 def main() -> int:
     width = max(len(n) for n, _, _ in RESULTS)
     for name, ok, err in RESULTS:

@@ -122,6 +122,35 @@ Memories and notebooks belong to a host by name, so renaming a host leaves them 
 Memory is on with local storage and off on GCP until `MEMORY_ENABLED=true`
 (`settings.memory_on`), so a deploy does not start writing memories to Firestore.
 
+## Third pass: scrolling, the show intro, open panels
+
+Scrolling moves the lights rather than a strip of paper. All of it is tied to the scroll
+position with CSS scroll-driven animations (`animation-timeline: scroll()` / `view()`), inside
+`@supports` and `prefers-reduced-motion: no-preference`, so where it isn't supported, or
+motion is reduced, everything sits still. One block in `dusk.css` ("scrolling"):
+
+| What | How |
+|---|---|
+| The header firms up over content | `head-settle` on `scroll(root)`, first 140 px |
+| How far down you are, in dots | `.app-head::after`, a dotted line revealed by `head-dots` |
+| The title steps back as you leave it | `title-leave` on the h1's own `view()` exit |
+| Sections and rows settle as they arrive | `settle` / `settle-row` on `view()` entry, a fixed 110 to 160 px so tall sections aren't dimmed for long |
+| Shelves | snap to cards; cards come up to size (`shelf-in`, `view(inline)`); the edge with more behind it fades (`shelf-edges` animating the registered `--edge-l` / `--edge-r`) |
+
+A full-page screenshot does not scroll, so anything below the fold is caught mid-arrival:
+check these with real scrolling.
+
+The show intro (`static/js/views/intro.js`) is a page of choices with a small stage that
+shows what the hosts will say: a name, a line of your own with starters to tap, how it opens
+(`catalog.INTRO_OPENINGS`: warm welcome, cold open, radio announcer, news desk, late night,
+hype; saved as `opening`, sent to the planner as `intro_style` and to a co-host's opening
+through `prompts.intro_opening`), and the theme, as tiles you can listen to
+(`/api/music/{id}/preview`).
+
+Panels that were a form in a white box (`.page .card`, apart from the topic box, the memo
+recorder and the credit card) are open sections on the page like New pod, and the saved
+cards (personas, styles, templates) are filled tiles rather than outlined ones.
+
 ## Checking it
 
 `python -m tests.visual` compares against baselines recorded before Dusk, so every shot

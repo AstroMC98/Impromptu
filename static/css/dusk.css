@@ -596,6 +596,141 @@
     .create-side .go-bar .btn.link { align-self: center; }
   }
 
+  /* ---- your show intro -------------------------------------------------------------------------------- */
+  .intro-page { max-width: 760px; }
+  .intro-form { display: flex; flex-direction: column; }
+  .intro-sec { display: flex; flex-direction: column; gap: 10px; }
+  .intro-sec .create-h2 { margin-bottom: 4px; }
+  .intro-sec .field-label { margin-top: 8px; }
+  .field.intro-name { height: 64px; padding-inline: 20px; border-radius: 20px; font: 600 26px/1 var(--f-head); letter-spacing: -.03em; }
+  .field.intro-name::placeholder { color: var(--grey); }
+  .intro-sec .research-card { margin-top: 26px; }
+  .intro-side { display: contents; }
+  .intro-stage {
+    order: -1; position: relative; isolation: isolate; overflow: hidden; margin-top: 6px; padding: 22px 22px 20px; border-radius: 28px;
+    min-height: 236px; display: flex; flex-direction: column; gap: 10px; color: var(--fg);
+    background:
+      radial-gradient(90% 70% at 88% -12%, color-mix(in oklch, var(--flood) 62%, transparent), transparent 72%),
+      linear-gradient(180deg, color-mix(in oklch, var(--flood) 40%, #08080B), #08080B 96%);
+    transition: background .5s ease;
+  }
+  .intro-air { align-self: flex-start; display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 999px;
+    background: rgba(255, 255, 255, .12); font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+  .intro-air i { width: 7px; height: 7px; border-radius: 50%; background: var(--tally); }
+  .intro-music { margin: auto 0 0; font-size: 13.5px; font-weight: 650; color: var(--on-dim); }
+  .intro-say { margin: 0; font: 500 clamp(22px, 5.6vw, 28px)/1.14 var(--f-head); letter-spacing: -.035em; text-wrap: balance; overflow-wrap: anywhere; }
+  .intro-hosts { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--on-dim); }
+  .intro-hosts .orb + .orb { margin-left: -14px; }
+  .intro-hosts span:last-child { margin-left: 4px; }
+  .intro-go { display: flex; flex-direction: column; gap: 8px; margin-top: 26px; }
+  .intro-go .error:empty { display: none; }
+  .intro-go .btn.link { align-self: center; }
+
+  .open-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .open-tile { border: 0; font: inherit; color: inherit; cursor: pointer; position: relative; display: flex; flex-direction: column; gap: 4px; min-height: 104px; padding: 14px 14px 14px 16px; border-radius: 20px;
+    background: var(--bg-2); text-align: left; transition: background .2s ease, box-shadow .2s ease, transform var(--dur-snappy) var(--spring-snappy); }
+  .open-tile:hover { background: color-mix(in oklch, var(--bg-2) 84%, var(--fg) 6%); }
+  .open-tile:active { transform: scale(.98); }
+  .open-tile strong { font: 600 17px/1.15 var(--f-head); letter-spacing: -.02em; padding-right: 22px; }
+  .open-blurb { font-size: 13px; line-height: 1.35; color: var(--fg-2); }
+  .open-dot { position: absolute; top: 14px; right: 14px; width: 14px; height: 14px; border-radius: 50%; background: var(--k); opacity: .5; transition: opacity .2s ease, box-shadow .2s ease; }
+  .open-tile[aria-checked="true"] { background: var(--surface); box-shadow: inset 0 0 0 2px var(--fg), var(--shadow); }
+  .open-tile[aria-checked="true"] .open-dot { opacity: 1; box-shadow: 0 0 0 4px color-mix(in oklch, var(--k) 24%, transparent); }
+
+  .mtile-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .mtile { display: flex; align-items: center; gap: 4px; padding-right: 10px; border-radius: 20px; background: var(--bg-2); transition: background .2s ease, box-shadow .2s ease; }
+  .mtile.on { background: var(--surface); box-shadow: inset 0 0 0 2px var(--fg), var(--shadow); }
+  .mtile-pick { border: 0; background: none; font: inherit; color: inherit; cursor: pointer; flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 6px 8px 8px; border-radius: 20px; text-align: left; }
+  .mtile-cover { flex: none; width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; color: var(--fg-2);
+    background: var(--cover, linear-gradient(140deg, color-mix(in oklch, var(--k) 80%, #fff), var(--k))) center / cover, var(--surface); }
+  .mtile-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .mtile-text strong { font-weight: 700; overflow-wrap: anywhere; }
+  .mtile-text span { font-size: 13px; color: var(--fg-2); }
+  .mtile-play { flex: none; width: 40px; height: 40px; background: var(--surface); }
+  .mtile.on .mtile-play { background: var(--bg-2); }
+  .mtile.playing .mtile-play { background: var(--fg); color: var(--bg); }
+  @media (min-width: 600px) { .open-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .mtile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1024px) {
+    .intro-page { max-width: 1120px; padding-inline: 48px; }
+    .intro-form { display: grid; grid-template-columns: minmax(0, 1fr) 360px; column-gap: 64px; align-items: start; }
+    .intro-form > * { grid-column: 1; min-width: 0; }
+    .intro-form > .intro-side { display: flex; flex-direction: column; grid-column: 2; grid-row: 1 / span 20; position: sticky; top: 88px; margin-top: 22px; }
+    .intro-stage { order: 0; margin: 0; min-height: 320px; padding: 26px; }
+    .intro-say { font-size: 30px; }
+    .intro-go { margin-top: 18px; }
+  }
+
+  /* ---- panels that were forms in a box: open sections on the page, like New pod ----------------------- */
+  .page .card:not(.about-box, .recorder, .credit-card, .accent) { background: none; box-shadow: none; padding: 0; border-radius: 0; gap: 12px; }
+  .page .card:not(.about-box, .recorder, .credit-card, .accent) + .card,
+  .page .card:not(.about-box, .recorder, .credit-card, .accent) { margin-bottom: 34px; }
+  .page .card-head h2, .page .card-h { font: 600 22px/1.1 var(--f-head); letter-spacing: -.03em; }
+  .page .card .field-label { margin-top: 4px; }
+  .page .card.brief-sched { background: var(--bg-2); padding: 14px 16px; border-radius: 20px; }
+  .page .card.watch-add { background: var(--bg-2); padding: 12px; border-radius: 24px; }
+  .page .card.watch-add .field { background: var(--surface); }
+  .page .card.watch-add .chip { background: var(--surface); }
+  .page .card.watch-add .chip[aria-pressed="true"] { background: var(--pri); }
+  .saved-card { background: var(--bg-2); box-shadow: none; border-radius: 22px; transition: background .2s ease, box-shadow .2s ease, transform var(--dur-snappy) var(--spring-snappy); }
+  .saved-card:hover { background: var(--surface); box-shadow: var(--shadow); }
+  .saved-card .btn.quiet, .saved-card .btn:not(.white) { background: var(--surface); }
+  .saved-card:hover .btn.quiet, .saved-card:hover .btn:not(.white) { background: var(--bg-2); }
+  .people > li { border-radius: 16px; }
+  .intro-form .radio-cards { max-height: none; overflow: visible; }
+
+  /* ---- scrolling ---------------------------------------------------------------------------------------
+     The page is not a strip of paper pulled past a window. Scrolling moves the lights: the title sinks
+     back as you leave it, things settle into place as they arrive, the header firms up over what's under
+     it and draws how far you've come in dots, and a shelf fades at whichever edge has more to see.
+     All of it is tied to the scroll position itself (scroll-driven animations), so it never runs ahead of
+     your hand; where a browser can't do that, everything simply sits still. */
+  html { scrollbar-width: thin; scrollbar-color: color-mix(in oklch, var(--fg) 22%, transparent) transparent; }
+  .sheet, .pick-list, .lp-body { scrollbar-width: thin; scrollbar-color: color-mix(in oklch, var(--fg) 22%, transparent) transparent; }
+  .tpl-row, .shelf-row, .kept-row, .chapter-cards { scroll-snap-type: x mandatory; scroll-padding-inline: 2px; overscroll-behavior-x: contain; }
+  .tpl-row > *, .shelf-row > *, .kept-row > *, .chapter-cards > * { scroll-snap-align: start; }
+  .app-head::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 4px; pointer-events: none;
+    background: radial-gradient(circle, var(--fg) 1.1px, transparent 1.6px) 0 50% / 8px 4px repeat-x; clip-path: inset(0 100% 0 0); }
+
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      /* the header: clear at the top, frosted once something is under it, with the way down drawn in dots */
+      .app-head { animation: head-settle linear both; animation-timeline: scroll(root block); animation-range: 0 140px; }
+      .app-head::after { animation: head-dots linear both; animation-timeline: scroll(root block); }
+      /* the title steps back as you leave it */
+      .page-title h1, .create-title h1, .home-hero h1 {
+        transform-origin: 0 100%; animation: title-leave linear both; animation-timeline: view(block); animation-range: exit -10% exit 90%; }
+      .explore-main .page-title h1, .memory-main .page-title h1 { transform-origin: 50% 100%; }
+      /* things settle as they arrive: sections first, then the rows and tiles inside them */
+      main .shelf, main .intro-sec, main .mem-group, main .mem-block, main .create-h2, main .page > .card {
+        animation: settle linear both; animation-timeline: view(block); animation-range: entry 0px entry 160px; }
+      main .saved-card, main .pod-grid > li, main .lib-list > li, main .mem-row, main .nb-page, main .open-tile, main .mtile,
+      main .radio-card, main .ledger > li, main .menu-item, main .people > li {
+        animation: settle-row linear both; animation-timeline: view(block); animation-range: entry 0px entry 110px; }
+      /* a shelf: cards come up to size as they slide in, and the edge with more behind it fades */
+      .tpl-row > *, .shelf-row > *, .kept-row > *, .chapter-cards > * {
+        animation: shelf-in linear both; animation-timeline: view(inline); animation-range: entry 0% entry 90%; }
+      .tpl-row, .shelf-row, .kept-row, .chapter-cards, .lib-body > .chips {
+        --edge-l: 0px; --edge-r: 36px;
+        -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--edge-l), #000 calc(100% - var(--edge-r)), transparent);
+        mask-image: linear-gradient(90deg, transparent, #000 var(--edge-l), #000 calc(100% - var(--edge-r)), transparent);
+        animation: shelf-edges linear both; animation-timeline: scroll(self inline); }
+    }
+  }
+  @keyframes head-settle {
+    from { background-color: transparent; box-shadow: 0 0 0 transparent; }
+    to { background-color: color-mix(in oklch, var(--bg) 78%, transparent); box-shadow: 0 10px 30px -22px color-mix(in oklch, var(--fg) 50%, transparent); }
+  }
+  @keyframes head-dots { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+  @keyframes title-leave { to { opacity: .0; transform: translateY(-10px) scale(.94); filter: blur(5px); } }
+  @keyframes settle { from { opacity: 0; transform: translateY(26px); } }
+  @keyframes settle-row { from { opacity: 0; transform: translateY(16px) scale(.975); } }
+  @keyframes shelf-in { from { opacity: .35; transform: scale(.9); } }
+  @keyframes shelf-edges {
+    0% { --edge-l: 0px; --edge-r: 36px; }
+    8%, 92% { --edge-l: 36px; --edge-r: 36px; }
+    100% { --edge-l: 36px; --edge-r: 0px; }
+  }
+
   /* ---- reduced motion: nothing drifts, turns or flies; states still read by brightness -------------- */
   @media (prefers-reduced-motion: reduce) {
     .mat i, .orb.talk::before, .orb .orb-ring, .xcard[data-depth="0"], .mcard[data-depth="0"], .gl-dim { animation: none; }
@@ -603,3 +738,7 @@
     .pod-card:hover .sleeve { transform: none; }
   }
 }
+
+/* The widths of a shelf's two edge fades, registered so they can be animated by its scroll position. */
+@property --edge-l { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --edge-r { syntax: "<length>"; inherits: false; initial-value: 0px; }

@@ -125,7 +125,7 @@ from . import briefing
 from . import wake as wake_mod
 from . import watch as watch_mod
 from .catalog import (
-    COHOST_MODES, COHOST_MODES_BY_ID, GENDERS, HOST_COLORS, MUSIC_MOODS, PERSONA_PRESETS, STYLE_PRESETS, TEMPLATES,
+    COHOST_MODES, COHOST_MODES_BY_ID, GENDERS, HOST_COLORS, INTRO_OPENINGS, INTRO_OPENINGS_BY_ID, MUSIC_MOODS, PERSONA_PRESETS, STYLE_PRESETS, TEMPLATES,
     TEMPLATES_BY_ID, VOICE_GENDER, VOICE_INFO, VOICES, accent_for, music_mood_for, style_label,
 )
 from .cohost import FRAME_BYTES, CohostSession, Cohosts, cast_cohost, mic_bucket
@@ -479,7 +479,7 @@ def _start_room(doc: dict, req: ShowRequest, source: str, model: Gemini, intro: 
 
 # ---- intros and music ------------------------------------------------------------------
 
-AUTO_INTRO = {"custom": False, "show_name": "", "intro_line": "", "music": "auto"}
+AUTO_INTRO = {"custom": False, "show_name": "", "intro_line": "", "music": "auto", "opening": ""}
 
 
 async def _intro_for(user: User, use_saved: bool) -> dict:
@@ -488,7 +488,7 @@ async def _intro_for(user: User, use_saved: bool) -> dict:
     saved = (await store.get_user(user.uid) or {}).get("show_intro") if use_saved else None
     if saved and saved.get("enabled", True):
         return {"custom": True, "show_name": saved.get("show_name", ""), "intro_line": saved.get("intro_line", ""),
-                "music": saved.get("music") or "auto"}
+                "music": saved.get("music") or "auto", "opening": saved.get("opening") or ""}
     return dict(AUTO_INTRO)
 
 
@@ -677,6 +677,7 @@ async def options(request: Request) -> dict:
         "persona_presets": PERSONA_PRESETS,
         "cohost_modes": [{k: m[k] for k in ("id", "label", "blurb", "accent")} for m in COHOST_MODES],
         "memory": settings.memory_on,
+        "intro_openings": [{k: o[k] for k in ("id", "label", "blurb", "accent", "sample")} for o in INTRO_OPENINGS],
         "cohost_source_chars": settings.cohost_source_chars,
         "cohost_notes_max_chars": settings.cohost_notes_max_chars,
         "host_colors": HOST_COLORS,
@@ -1733,7 +1734,7 @@ async def create_show(body: NewShow, request: Request) -> dict:
     # Recorded pods, and the direction they're written to, only come from a voice
     # memo; the show's name and intro line only from the creator's saved intro.
     req = body.request.model_copy(update={"mode": "live", "direction": "", "show_name": intro["show_name"],
-                                          "intro_line": intro["intro_line"]})
+                                          "intro_line": intro["intro_line"], "intro_style": intro["opening"]})
     cost = _cost(req.minutes, req.research)
     if user.credits < cost:
         raise _broke((
@@ -2452,6 +2453,17 @@ async def memo_audio(show_id: str, request: Request) -> Response:
     return _bytes_response(request, data, "audio/mp4" if memo.get("mime") == "audio/m4a" else memo.get("mime", ""))
 
 
+@app.get("/api/music/{pack_id}/preview")
+async def music_preview(pack_id: str, request: Request) -> FileResponse:
+    """A studio-library theme, to hear before you choose it (the show intro page)."""
+    await require_user(request)
+    pack = next((p for p in library.packs if p.id == pack_id), None)
+    path = (library.root / pack.file) if pack else None
+    if path is None or not path.is_file():
+        raise HTTPException(status_code=404, detail="No such theme.")
+    return FileResponse(path, media_type="audio/mpeg", headers={"Cache-Control": "private, max-age=86400"})
+
+
 @app.get("/api/me/music")
 async def my_music(request: Request) -> dict:
     """Original music made for you, to reuse on another pod or as your show's theme."""
@@ -2473,6 +2485,7 @@ async def save_show_intro(body: ShowIntroIn, request: Request) -> dict:
     _require_origin(request)
     user = await require_user(request)
     intro = {"show_name": body.show_name.strip(), "intro_line": body.intro_line.strip(),
+             "opening": body.opening if body.opening in INTRO_OPENINGS_BY_ID else "warm",
              "music": await _check_music(user.uid, body.music), "enabled": body.enabled, "updated_at": time.time()}
     await store.update_user(user.uid, {"show_intro": intro})
     return {"intro": intro}

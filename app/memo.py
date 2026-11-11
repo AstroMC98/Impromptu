@@ -124,7 +124,8 @@ def build_request(brief: MemoBrief, opts: MemoOptions, source: str, *, credit: s
         source=source, hosts=[h.model_dump() for h in opts.hosts] or fmt["hosts"], minutes=opts.minutes,
         language=opts.language.strip() or brief.language, source_names=[f"Voice memo by {credit}"],
         mode="recorded", direction=prompts.memo_direction(credit),
-        show_name=intro.get("show_name", ""), intro_line=intro.get("intro_line", ""), **style,
+        show_name=intro.get("show_name", ""), intro_line=intro.get("intro_line", ""),
+        intro_style=intro.get("opening", ""), **style,
     )
 
 

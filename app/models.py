@@ -74,6 +74,7 @@ class ShowRequest(BaseModel):
     # the hosts welcome listeners to the show by name and work in its intro line.
     show_name: str = Field(default="", max_length=60)
     intro_line: str = Field(default="", max_length=200)
+    intro_style: str = Field(default="", max_length=40)   # a catalog.INTRO_OPENINGS id
     # Hard rules: lines the creator says the hosts must never cross, whatever the style,
     # a persona or a listener asks for. Private to the creator (main._public_request).
     hard_rules: list[str] = Field(default_factory=list, max_length=40)
@@ -114,6 +115,7 @@ class ShowIntroIn(BaseModel):
     switch it off for one)."""
     show_name: str = Field(min_length=1, max_length=60)
     intro_line: str = Field(default="", max_length=200)
+    opening: str = Field(default="warm", max_length=40)   # a catalog.INTRO_OPENINGS id: how the hosts open
     music: str = Field(default="auto", max_length=MUSIC_CHARS)
     enabled: bool = True
 

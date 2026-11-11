@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import time
 
-from .catalog import COHOST_MODES_BY_ID, MUSIC_MOODS, TEMPLATES, VOCAL_TAGS, VOICE_GENDER, VOICES
+from .catalog import COHOST_MODES_BY_ID, INTRO_OPENINGS_BY_ID, MUSIC_MOODS, TEMPLATES, VOCAL_TAGS, VOICE_GENDER, VOICES
 from .models import (
     CohostRequest, ContextBrief, ContextItem, Host, HostRequest, InterruptNote, ListenerComment, MemoBrief,
     ResearchDossier, SegmentContext, ShowPlan, ShowRequest,
@@ -378,7 +378,7 @@ def planner_system(req: ShowRequest, source: str, research_beats: int = 0) -> st
         intro=PLANNER_INTRO[req.mode].format(host_count=_host_count(len(req.hosts))),
         show_name=f' to "{req.show_name.strip()}"' if req.show_name.strip() else "",
         intro_line=(f' Work in the show\'s own intro line, keeping its words: "{req.intro_line.strip()}".'
-                    if req.intro_line.strip() else ""),
+                    if req.intro_line.strip() else "") + intro_opening(req.intro_style),
         direction=_direction(req),
         research=PLANNER_RESEARCH.format(n=research_beats) if req.research and research_beats else "",
         beat_range=beats,
@@ -1081,12 +1081,19 @@ def notes_brief_input(notes: str) -> str:
     return f"NOTES:\n<<<\n{notes}\n>>>"
 
 
+def intro_opening(opening: str) -> str:
+    """How a saved show intro says the hosts open (catalog.INTRO_OPENINGS), as a sentence
+    for the prompt; "" for the plain welcome or an id we don't know."""
+    direction = (INTRO_OPENINGS_BY_ID.get(opening or "") or {}).get("direction", "")
+    return f" {direction}" if direction else ""
+
+
 def cohost_opening(user_name: str, minutes: int, show_name: str = "", intro_line: str = "",
-                   mode: str = "banter") -> str:
-    """show_name / intro_line: from the creator's saved show intro, if the call uses it."""
+                   mode: str = "banter", opening: str = "") -> str:
+    """show_name / intro_line / opening: from the creator's saved show intro, if the call uses it."""
     show = f' to "{show_name.strip()}"' if show_name.strip() else ""
     line = (f' Work in the show\'s own intro line, keeping its words: "{intro_line.strip()}".'
-            if intro_line.strip() else "")
+            if intro_line.strip() else "") + intro_opening(opening)
     if mode == "roleplay":
         return (f"(Producer: you're live and recording, about {minutes} minutes. Open the show: welcome "
                 f"the listeners{show}, say in a sentence what scene you and {user_name} are about to play "
