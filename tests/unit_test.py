@@ -2168,6 +2168,16 @@ def _():
     assert not may(True, me=False)              # the caller said no
     assert not may(True, uid=None, role="visitor") and not may(True, role="producer")
     assert MemorySettings(remember_me=False).model_dump() == {"remember_callers": None, "remember_me": False}
+    # Saying no in the middle of a show: it holds at once, and what the room noted is dropped.
+    from app.room import Rooms
+    conn, other = NS(uid="jo", remember_me=True), NS(uid="al", remember_me=True)
+    room = NS(conns={1: conn, 2: other}, callers={"jo": {"name": "Jo", "said": ["Hi"]}, "al": {"name": "Al", "said": ["Yo"]}})
+    live = Rooms()
+    live._rooms["s1"] = room
+    live.caller_consent("jo", False)
+    assert conn.remember_me is False and other.remember_me is True and list(room.callers) == ["al"]
+    live.caller_consent("jo", True)
+    assert conn.remember_me is True and "jo" not in room.callers
 
 
 def main() -> int:

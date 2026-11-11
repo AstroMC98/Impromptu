@@ -1007,6 +1007,8 @@ async def memory_settings(body: MemorySettings, request: Request) -> dict:
     fields = {k: v for k, v in body.model_dump().items() if v is not None}
     if fields:
         await store.update_user(user.uid, fields)
+    if body.remember_me is not None:
+        rooms.caller_consent(user.uid, body.remember_me)    # live rooms hold a copy: keep it true
     doc = await store.get_user(user.uid) or {}
     return {"remember_callers": bool(doc.get("remember_callers")), "remember_me": doc.get("remember_me") is not False}
 

@@ -848,6 +848,16 @@ class Rooms:
     def ids(self) -> set[str]:
         return set(self._rooms)
 
+    def caller_consent(self, uid: str, ok: bool) -> None:
+        """Someone flipped "Let hosts remember me": it holds from now on in every live room
+        they're in, and a no also drops what a room had noted about them so far."""
+        for room in self._rooms.values():
+            for conn in room.conns.values():
+                if conn.uid == uid:
+                    conn.remember_me = ok
+            if not ok:
+                room.callers.pop(uid, None)
+
     def live_count(self) -> int:
         return sum(r.ended_reason is None for r in self._rooms.values())
 
