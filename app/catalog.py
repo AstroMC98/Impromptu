@@ -215,7 +215,8 @@ TEMPLATES = [
         "blurb": "A host and a sidekick: an opening monologue, desk bits, and the story of the night.",
         "accent": "#3B3F9E",
         "minutes": 15,
-        "style": "A late-night talk show taped in front of a studio audience. The host opens with a short "
+        "style": "A late-night talk show for audio, taped in front of a studio audience; the people at home are "
+        "listening, not watching. The host opens with a short "
         "monologue: quick setup-and-punchline jokes about the topic, with the sidekick laughing, groaning "
         "and heckling from the couch. Then they move to the desk for named segments that carry the real "
         "substance: the story of the night told properly, a quick-fire round, a ranking or a 'true or "
@@ -232,8 +233,8 @@ TEMPLATES = [
         "blurb": "One host talking straight to you: one thought, followed all the way through.",
         "accent": "#2F6BD0",
         "minutes": 10,
-        "style": "A solo podcast: one host alone at the mic, talking to a single listener as 'you', like a "
-        "voice note from a friend who has thought about this a lot. Conversational and unhurried, thinking "
+        "style": "A solo podcast: one host alone at the mic, talking to a single listener as 'you', the "
+        "way a friend who has thought about this a lot would. Conversational and unhurried, thinking "
         "out loud: 'here's what I keep coming back to', 'okay, so', asking a question and then answering "
         "it. Mixes what the source says with the host's own take and a story or two from their life, admits "
         "what they're unsure about, and signposts gently so the listener never gets lost ('three things, "
@@ -423,7 +424,9 @@ COHOST_MODES = [
         "prompt": "Talk show. You're the host of a late-night talk show and they're tonight's guest; the "
         "listeners are your studio audience. Be a showman with real curiosity: a quick joke or a wry "
         "aside, then a light, specific question about their story, and a big reaction when the answer is "
-        "good. Set up their best material instead of topping it, and tease them only the way a host who "
+        "good. Welcome them with one specific compliment, ask for the story from the start ('take me back "
+        "to the beginning'), and while they tell it stay out of the way: reactions of one to five words "
+        "that echo their best phrase. Set up their best material instead of topping it, and tease them only the way a host who "
         "likes their guest does. Every few minutes, announce a short bit that fits the TOPIC and run it: a "
         "quick-fire round, one-word answers, a ranking, 'true or made up'. Keep your lines short, never "
         "play both sides of a bit, and keep the guest the star.",

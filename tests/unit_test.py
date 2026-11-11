@@ -2061,6 +2061,42 @@ def _():
     assert "Talk show." in prompts.cohost_mode_switch("talkshow")
 
 
+@check("format playbooks: a template's style brings its playbook; a custom style or a restyle brings none")
+def _():
+    from app import craft
+    from app.catalog import TEMPLATES, TEMPLATES_BY_ID, template_request
+    r = _runner()
+    for tid, book in craft.FORMAT_OF.items():
+        req = ShowRequest(source="x", **template_request(tid))
+        p, w = prompts.planner_system(req, "SRC"), prompts.writer_system(req, r.plan, "SRC", req.style, [])
+        assert craft.PLAYBOOKS[book]["plan"] in p and craft.PLAYBOOKS[book]["write"] in w, tid
+        # after the plan and any added context, before the style: the cached prefix is untouched
+        assert w.index("EPISODE PLAN:") < w.index("FORMAT PLAYBOOK") < w.index("\nSTYLE:\n"), tid
+        assert p.index("FORMAT PLAYBOOK") < p.index("\nSTYLE:\n"), tid
+        assert "FORMAT PLAYBOOK" not in prompts.writer_system(req, r.plan, "SRC", "Smooth late-night FM radio.", [])
+    assert set(craft.FORMAT_OF) <= set(TEMPLATES_BY_ID) and set(craft.FORMAT_OF.values()) <= set(craft.PLAYBOOKS)
+    plain = ShowRequest(source="x", style="Two friends chatting.", hosts=[HostRequest()])
+    assert "FORMAT PLAYBOOK" not in prompts.planner_system(plain, "SRC") + prompts.writer_system(r.req, r.plan, "SRC", "STYLE", [])
+    assert craft.playbook(TEMPLATES_BY_ID["stage-talk"]["style"] + " And swear a lot.") is None
+    # Playbooks teach the craft; they never name the shows and people they were learned from.
+    text = " ".join(v for b in craft.PLAYBOOKS.values() for v in b.values()).lower()
+    assert not re.search(r"\b(ted|tedx|fallon|tonight show|daily show|conan|manliness)\b", text)
+    assert all(t["id"] in craft.FORMAT_OF or craft.playbook(t["style"]) is None for t in TEMPLATES)
+
+
+@check("an interview-format pod writes longer segments")
+def _():
+    from app.catalog import template_request
+    base = Settings().segment_seconds
+
+    def runner(tid):
+        return ShowRunner(ShowRequest(source="x", **template_request(tid)), "x", gemini=None,
+                          settings=Settings(), room=StubRoom())
+    idea = runner("idea-breakdown")
+    assert idea.settings.segment_seconds == max(base, 40.0) and idea._segment_lines() == 4
+    assert runner("talk-show").settings.segment_seconds == base == _runner().settings.segment_seconds
+
+
 @check("starter templates: a stage talk and a solo pod for one host, a talk show for two")
 def _():
     from app.catalog import MUSIC_MOOD_FOR, MUSIC_MOODS, TEMPLATES_BY_ID

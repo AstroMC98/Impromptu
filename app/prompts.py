@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import time
 
+from . import craft
 from .catalog import COHOST_MODES_BY_ID, INTRO_OPENINGS_BY_ID, MUSIC_MOODS, TEMPLATES, VOCAL_TAGS, VOICE_GENDER, VOICES
 from .models import (
     CohostRequest, ContextBrief, ContextItem, Host, HostRequest, InterruptNote, ListenerComment, MemoBrief,
@@ -66,7 +67,7 @@ a full answer. Give one or two per kind: `ask` (a question came in, e.g. "Ooh, g
 question."), `deeper` (they want more on this), `steer` (they want a change of
 direction) and `move_on` (they want to skip ahead). Spread them across the hosts.
 - Write everything in {language}.{research}
-{direction}
+{direction}{playbook}
 STYLE:
 {style}"""
 
@@ -119,7 +120,7 @@ SHOW: {title}. {tagline}
 
 EPISODE PLAN:
 {beats}
-{added_context}
+{added_context}{playbook}
 STYLE:
 {style}"""
 
@@ -380,6 +381,7 @@ def planner_system(req: ShowRequest, source: str, research_beats: int = 0) -> st
         intro_line=(f' Work in the show\'s own intro line, keeping its words: "{req.intro_line.strip()}".'
                     if req.intro_line.strip() else "") + intro_opening(req.intro_style),
         direction=_direction(req),
+        playbook=craft.plan_block(req.style),
         research=PLANNER_RESEARCH.format(n=research_beats) if req.research and research_beats else "",
         beat_range=beats,
         minutes=req.minutes,
@@ -476,6 +478,8 @@ def writer_system(
                          for i, h in enumerate(plan.hosts)),
         beats="\n".join(f"{i}. {b.title}: {b.notes}" for i, b in enumerate(plan.beats, 1)),
         added_context=format_context(context),
+        # The style in force, not the one the pod started with: a restyle drops the playbook.
+        playbook=craft.write_block(style),
         tags=" ".join(VOCAL_TAGS),
     ) + hard_rules(req.hard_rules)
 

@@ -39,6 +39,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from typing import Protocol
 
+from . import craft
 from .clock import LiveClock
 from .config import Settings
 from .limits import COMMENT_CHARS, COMMENTS_PER_SHOW, NAME_CHARS, QUEUED_COMMENTS_PER_SHOW
@@ -213,6 +214,10 @@ class ShowRunner:
         self.req = request
         self.source = source
         self.gemini = gemini
+        # A format whose turns run long (an expert's developed answer) writes longer segments.
+        longer = craft.segment_seconds(request.style)
+        if longer > settings.segment_seconds:
+            settings = settings.model_copy(update={"segment_seconds": longer})
         self.settings = settings
         self.room = room
         self.rate = settings.sample_rate
