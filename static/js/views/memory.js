@@ -50,6 +50,7 @@ export async function memoryView(root) {
   let busy = false;
   let dead = false;
   let rememberCallers = false;
+  let rememberMe = true;
   let notebooks = [];
 
   const card = (m, depth) => html`
@@ -151,6 +152,12 @@ export async function memoryView(root) {
           <span class="radio-text"><span class="radio-title">${icon("people", 16)} Remember callers</span>
             <span class="radio-desc">When someone signed in calls one of your live pods, its hosts can remember them for next time.
               Each caller shows up above for a yes or a no first.</span></span>
+        </button>
+        <button type="button" role="switch" class="radio-card research-card" data-toggle-me aria-checked="${rememberMe ? "true" : "false"}">
+          <span class="radio-dot" aria-hidden="true"></span>
+          <span class="radio-text"><span class="radio-title">${icon("user", 16)} Let hosts remember me</span>
+            <span class="radio-desc">When you call in to someone else's live pod, its hosts may remember you for next time.
+              Turn this off and no host remembers you or is told you've called before.</span></span>
         </button>
       </div>`);
   };
@@ -282,6 +289,16 @@ export async function memoryView(root) {
       return renderReview(true);
     }
     if (t.closest("[data-add]")) return editSheet(null);
+    if (t.closest("[data-toggle-me]")) {
+      try {
+        rememberMe = (await api.memorySettings({ remember_me: !rememberMe })).remember_me;
+        renderMore();
+        el.querySelector("[data-toggle-me]")?.focus();
+      } catch (err) {
+        toast(err.message);
+      }
+      return;
+    }
     if (t.closest("[data-toggle-callers]")) {
       try {
         rememberCallers = (await api.memorySettings({ remember_callers: !rememberCallers })).remember_callers;
@@ -328,6 +345,7 @@ export async function memoryView(root) {
     pending = data.pending || [];
     kept = data.kept || [];
     rememberCallers = Boolean(data.remember_callers);
+    rememberMe = data.remember_me !== false;
     renderReview();
     renderKept();
     renderMore();

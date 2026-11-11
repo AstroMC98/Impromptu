@@ -2153,6 +2153,23 @@ def _():
     assert "called before" not in prompts._comment_line(ListenerComment(id=4, name="Al", text="Hi"))
 
 
+@check("caller consent: hosts remember a caller only if the creator asked and the caller hasn't said no")
+def _():
+    from types import SimpleNamespace as NS
+
+    from app.main import MemorySettings
+    from app.room import ShowRoom
+
+    def may(room_on, uid="jo", role="listener", me=True):
+        return ShowRoom._may_remember(NS(remember_callers=room_on), NS(uid=uid, role=role, remember_me=me))
+
+    assert may(True)
+    assert not may(False)                       # the creator never asked
+    assert not may(True, me=False)              # the caller said no
+    assert not may(True, uid=None, role="visitor") and not may(True, role="producer")
+    assert MemorySettings(remember_me=False).model_dump() == {"remember_callers": None, "remember_me": False}
+
+
 def main() -> int:
     width = max(len(n) for n, _, _ in RESULTS)
     for name, ok, err in RESULTS:

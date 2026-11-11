@@ -102,12 +102,21 @@ export function callinForm(ctl, { id, variant = "bar" } = {}) {
       <label class="sr-only" for="${id}">Call in to the hosts</label>
       <input id="${id}" name="callin" maxlength="${500}" placeholder="Call in to the hosts" autocomplete="off" enterkeyhint="send">
       <button type="submit" class="round-btn white" aria-label="Send to the hosts">${icon("send", 22)}</button>
+      <p class="callin-note" id="${id}-note" hidden>The hosts may remember you for next time. You can turn that off under You, Memory.</p>
     </form>`;
 }
 
 export function bindCallin(root, ctl) {
   for (const form of root.querySelectorAll("form[data-callin]")) {
     const input = form.querySelector("input[name=callin]");
+    // "The hosts may remember you": the room says so once you've joined, which can be after
+    // this form was drawn, so it is checked each time you go to type.
+    const note = form.querySelector(".callin-note");
+    input.addEventListener("focus", () => {
+      note.hidden = !ctl.store.mayRemember;
+      if (note.hidden) input.removeAttribute("aria-describedby");
+      else input.setAttribute("aria-describedby", note.id);
+    });
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       const text = input.value.trim();

@@ -123,6 +123,7 @@ class Conn:
         self.name = name
         self.ip = ip
         self.uid = uid
+        self.remember_me = True     # "Let hosts remember me": the caller's own switch, read when they join
         self.playing = False
         self.closed = False
         # Their listening session, for the owner's stats (see stats.py).
@@ -429,13 +430,13 @@ class ShowRoom:
         # Call-ins go out under the account's name, never a name the client picks.
         text = str(msg.get("text", ""))
         returning = ""
-        if self.remember_callers and conn.uid and conn.role != "producer":
+        if self._may_remember(conn):
             returning = memory.returning(self._known_callers, conn.uid, self._host_names(),
                                          self.doc.get("visibility") or "public")
         made, err = self.runner.add_comment(
             conn.name, text, conn.role, client_id=str(msg.get("client_id", "")), returning=returning,
         )
-        if made is not None and self.remember_callers and conn.uid and conn.role != "producer":
+        if made is not None and self._may_remember(conn):
             said = self.callers.setdefault(conn.uid, {"name": conn.name, "said": []})["said"]
             if made.text not in said:
                 said.append(made.text)
@@ -571,6 +572,11 @@ class ShowRoom:
 
     def _host_names(self) -> list[str]:
         return [h.get("name", "") for h in self.doc.get("hosts", []) if isinstance(h, dict)]
+
+    def _may_remember(self, conn: Conn) -> bool:
+        """Both sides have to agree: the creator turned on "Remember callers", and this
+        caller hasn't turned off "Let hosts remember me"."""
+        return bool(self.remember_callers and conn.uid and conn.role != "producer" and conn.remember_me)
 
     async def _load_caller_memory(self) -> None:
         """Is "Remember callers" on for this show's creator, and whom do they remember?"""
@@ -804,6 +810,7 @@ class ShowRoom:
             "show": self.public_show(),
             "role": conn.role,
             "can_interrupt": conn.producer,
+            "may_remember": self._may_remember(conn),
             "share_url": f"/show/{self.id}",
             "plan": self.plan,
             "chapters": [{"i": i, "start": s} for i, s in sorted(self.chapters.items())],

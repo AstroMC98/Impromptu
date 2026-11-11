@@ -983,25 +983,32 @@ async def _room_for_memory(uid: str) -> None:
 async def list_memories(request: Request) -> dict:
     user = await require_user(request)
     if not settings.memory_on:
-        return {"pending": [], "kept": [], "remember_callers": False}
+        return {"pending": [], "kept": [], "remember_callers": False, "remember_me": False}
     doc = await store.get_user(user.uid) or {}
     return {**memory.split(await memory.all_items(store, user.uid)),
-            "remember_callers": bool(doc.get("remember_callers"))}
+            "remember_callers": bool(doc.get("remember_callers")),
+            "remember_me": doc.get("remember_me") is not False}
 
 
 class MemorySettings(BaseModel):
-    remember_callers: bool
+    remember_callers: bool | None = None
+    remember_me: bool | None = None
 
 
 @app.put("/api/memories/settings")
 async def memory_settings(body: MemorySettings, request: Request) -> dict:
-    """Remember callers: off unless you turn it on. Only signed-in callers, only for the
-    hosts of the show they called, and only once you approve each one."""
+    """Two switches. Remember callers (yours as a creator): off unless you turn it on; only
+    signed-in callers, only for the hosts of the show they called, and only once you approve
+    each one. Let hosts remember me (yours as a caller): on unless you turn it off, and off
+    means no creator's hosts remember you or are told you've called before."""
     _require_memory()
     _require_origin(request)
     user = await require_user(request)
-    await store.update_user(user.uid, {"remember_callers": body.remember_callers})
-    return {"remember_callers": body.remember_callers}
+    fields = {k: v for k, v in body.model_dump().items() if v is not None}
+    if fields:
+        await store.update_user(user.uid, fields)
+    doc = await store.get_user(user.uid) or {}
+    return {"remember_callers": bool(doc.get("remember_callers")), "remember_me": doc.get("remember_me") is not False}
 
 
 @app.post("/api/memories")
@@ -2498,6 +2505,8 @@ async def show_socket(ws: WebSocket, show_id: str) -> None:
 
     conn = Conn(ws, role, user.name if user else "Visitor", ip, uid=user.uid if user else None,
                 lid=_token(first.get("lid")))
+    if user and settings.memory_on:
+        conn.remember_me = (await store.get_user(user.uid) or {}).get("remember_me") is not False
     room.join(conn, sample(first.get("have_from")), sample(first.get("have_to")))
     try:
         while True:

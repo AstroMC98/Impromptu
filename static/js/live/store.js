@@ -76,6 +76,7 @@ export class ShowStore {
     this.state = s.state;
     this.ended = s.ended;
     this.saved = s.saved;
+    this.mayRemember = Boolean(s.may_remember);
     this._clock(s.clock);
     this._changed({ type: "snapshot" });
   }

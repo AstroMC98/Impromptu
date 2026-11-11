@@ -99,6 +99,12 @@ listener who calls a live pod is proposed as a memory for that pod's hosts, and,
 the writers are told when the same person calls one of those hosts again. The note goes to
 the writers only, never to other listeners.
 
+The caller has a say too: "Let hosts remember me" on the Memory page, on unless they turn it
+off (`remember_me` on the account; only an explicit `false` opts out). It is read when their
+socket joins a room (`Conn.remember_me`), and `ShowRoom._may_remember` needs both switches.
+While both are on, the call-in box shows "The hosts may remember you…" when they go to type
+(`may_remember` in the snapshot, `.callin-note`).
+
 Memories and notebooks belong to a host by name, so renaming a host leaves them behind.
 
 Memory is on with local storage and off on GCP until `MEMORY_ENABLED=true`
