@@ -184,6 +184,12 @@ export class ShowController {
     this.player.back(15);
   }
 
+  /** Skip ahead 15 seconds: in a replay up to the end; live, as far as live. */
+  fwd15() {
+    if (!this.player.started) return;
+    this.seekTo(this.player.position() + 15 * this.store.rate);
+  }
+
   jumpLive() {
     if (!this.player.started) return this.tuneIn();
     if (this.player.paused) this.player.resume();

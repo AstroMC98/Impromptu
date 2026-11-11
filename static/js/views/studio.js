@@ -46,7 +46,8 @@ export function mountStudio(root, ctl) {
             <div class="pl-controls">
               <span class="row">
                 <button class="icon-btn" type="button" data-action="toggle-play" data-r="play" aria-label="Play"></button>
-                <button class="icon-btn" type="button" data-action="back15" aria-label="Back 15 seconds">${icon("back", 22)}</button>
+                <button class="icon-btn" type="button" data-action="back15" aria-label="Back 15 seconds">${icon("back15", 24)}</button>
+                ${ctl.live ? "" : html`<button class="icon-btn" type="button" data-action="fwd15" aria-label="Forward 15 seconds">${icon("fwd15", 24)}</button>`}
                 <button class="icon-btn" type="button" data-action="mute" data-r="mute" aria-label="Mute"></button>
                 <span class="pl-time" data-r="time"></span>
                 <span data-r="behind"></span>

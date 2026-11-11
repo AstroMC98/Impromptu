@@ -15,6 +15,7 @@ export function showActions(ctl, extra = {}) {
   return {
     "toggle-play": () => ctl.togglePlay(),
     back15: () => ctl.back15(),
+    fwd15: () => ctl.fwd15(),
     "jump-live": () => ctl.jumpLive(),
     "tune-in": () => ctl.tuneIn(),
     react: (el) => {

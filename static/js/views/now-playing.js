@@ -44,7 +44,7 @@ export function mountNowPlaying(host, ctl, { page = false, onClose } = {}) {
       <button class="icon-btn big" type="button" data-action="back15" aria-label="Back 15 seconds">${icon("back15", 28)}</button>
       <button class="play-btn" type="button" data-action="toggle-play" data-r="play" aria-label="Play"></button>
       ${ctl.live ? html`<button class="icon-btn big" type="button" data-action="jump-live" aria-label="Jump to live">${icon("jumpLive", 26)}</button>`
-        : html`<span class="np-gap" aria-hidden="true"></span>`}
+        : html`<button class="icon-btn big" type="button" data-action="fwd15" aria-label="Forward 15 seconds">${icon("fwd15", 28)}</button>`}
       ${ctl.live && s.producer ? html`<button class="icon-btn big" type="button" data-action="interrupt" aria-label="Interrupt the show">${icon("mic")}</button>`
         : ctl.live ? html`<button class="icon-btn big" type="button" data-action="callin" aria-label="Call in">${icon("chat")}</button>`
           : html`<span class="np-gap" aria-hidden="true"></span>`}
