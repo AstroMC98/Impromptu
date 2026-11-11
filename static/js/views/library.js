@@ -1,7 +1,7 @@
 // The app shell (header, the tab bar on phones and the rail on desktop), sleeves, the
 // pod lists, and the house screens: Home, Discover, Library and You.
 import { api } from "../api.js";
-import { waiting } from "../components.js";
+import { material, waiting } from "../components.js";
 import { coverStyle } from "../cover.js";
 import { html, setHtml } from "../html.js";
 import { icon, logo, VISIBILITY_ICON, VISIBILITY_LABEL } from "../icons.js";
@@ -528,31 +528,62 @@ export async function youView(root) {
   applyAccent(document.documentElement, HOUSE_ACCENT);
   const el = document.createElement("div");
   el.className = "house-page";
+  const first = (me.name || "You").trim().split(/\s+/)[0];
+  const tile = (href, ic, accent, title, desc, tag = "") => html`
+    <a class="ytile" href="${href}" data-link style="--k:${accent}">
+      <span class="ytile-ic" aria-hidden="true">${icon(ic, 20)}</span>
+      <span class="ytile-text"><strong>${title}${tag ? html`<span class="btile-tag">${tag}</span>` : ""}</strong><span>${desc}</span></span>
+      ${icon("chevronRight", 16)}
+    </a>`;
   setHtml(el, html`
     ${appHeader({ search: false })}
-    <main class="page narrow you">
-      <div class="you-who">
-        ${meAvatar(56)}
-        <span class="col grow"><h1>${me.name}</h1><span class="muted small">${me.email}</span></span>
-        ${me.admin ? html`<span class="tag">Admin</span>` : ""}
+    <main class="page wide you">
+      <div class="page-title"><div class="col">
+        <h1 class="two">${first}.<span class="ask">Your side of the studio.</span></h1>
+      </div></div>
+      <div class="you-body">
+        <div class="you-lists">
+          <section class="intro-sec" aria-labelledby="ym-h">
+            <h2 id="ym-h" class="create-h2 first">Make something</h2>
+            <div class="ytile-grid">
+              ${tile("/new", "plus", "#B8336A", "A new pod", "A topic, a file or a link, live in a minute")}
+              ${tile("/cohost", "mic", "#6A4FB0", "Co-host live", "Talk it through with an AI co-host")}
+              ${tile("/memo", "mic", "#B5521C", "From a voice memo", "Ramble for a minute, get an episode")}
+              ${tile("/briefings", "sparkle", "#2E6F9E", "Briefings", "A private pod made just for you")}
+            </div>
+          </section>
+          <section class="intro-sec" aria-labelledby="ys-h">
+            <h2 id="ys-h" class="create-h2">Your sound</h2>
+            <div class="ytile-grid">
+              ${tile("/intro", "play", "#6A4FB0", "Show intro", "How every pod of yours opens")}
+              ${tile("/personas", "user", "#1F7F6A", "Personas", "The voices you cast as hosts")}
+              ${tile("/styles", "restyle", "#B5521C", "Styles", "Your own vibes for a pod")}
+              ${session.options.memory ? tile("/memory", "heart", "#B8336A", "Memory", "What your co-hosts remember") : ""}
+            </div>
+          </section>
+          <section class="intro-sec" aria-labelledby="yp-h">
+            <h2 id="yp-h" class="create-h2">People and numbers</h2>
+            <div class="ytile-grid">
+              ${tile("/connections", "people", "#2F6BD0", "Connections", "Who can hear what you share", session.incoming ? `${session.incoming} new` : "")}
+              ${tile("/stats", "bars", "#475569", "Stats", "Who listened, and for how long")}
+              ${tile(`/creator/${me.uid}`, "globe", "#1F7F6A", "Your creator page", "What everyone else sees")}
+              ${me.admin ? tile("/admin", "shield", "#3A4250", "Admin", "Credits and takedowns") : ""}
+            </div>
+          </section>
+        </div>
+        <aside class="you-side" aria-label="Your account">
+          <div class="intro-stage stage ystage" data-credits>${creditCard(me.credits)}</div>
+          <ul class="ledger" data-ledger aria-label="Recent credits"><li>${waiting("", { inline: true })}</li></ul>
+          <div class="you-who">
+            ${meAvatar(44)}
+            <span class="col grow"><strong>${me.name}</strong><span class="muted small">${me.email}</span></span>
+            ${me.admin ? html`<span class="tag">Admin</span>` : ""}
+          </div>
+          <button class="btn quiet block" type="button" data-signout>${icon("signOut", 18)}Sign out</button>
+        </aside>
       </div>
-      <section class="card credit-card" data-credits>${creditCard(me.credits)}</section>
-      <ul class="ledger" data-ledger><li>${waiting("", { inline: true })}</li></ul>
-      <nav class="menu" aria-label="Your things">
-        <a class="menu-item" href="/briefings" data-link>${icon("sparkle", 20)}Briefings<span class="faint">made just for you</span>${icon("chevronRight", 16)}</a>
-        <a class="menu-item" href="/intro" data-link>${icon("mic", 20)}Show intro${icon("chevronRight", 16)}</a>
-        <a class="menu-item" href="/memo" data-link>${icon("mic", 20)}Pod from a voice memo${icon("chevronRight", 16)}</a>
-        <a class="menu-item" href="/personas" data-link>${icon("user", 20)}Personas${icon("chevronRight", 16)}</a>
-        ${session.options.memory ? html`<a class="menu-item" href="/memory" data-link>${icon("heart", 20)}Memory<span class="faint">what your co-hosts remember</span>${icon("chevronRight", 16)}</a>` : ""}
-        <a class="menu-item" href="/styles" data-link>${icon("restyle", 20)}Styles${icon("chevronRight", 16)}</a>
-        <a class="menu-item" href="/connections" data-link>${icon("people", 20)}Connections
-          ${session.incoming ? html`<span class="tag new-tag">${session.incoming} new</span>` : ""}${icon("chevronRight", 16)}</a>
-        <a class="menu-item" href="/stats" data-link>${icon("bars", 20)}Stats${icon("chevronRight", 16)}</a>
-        <a class="menu-item" href="/creator/${me.uid}" data-link>${icon("globe", 20)}Your creator page${icon("chevronRight", 16)}</a>
-        ${me.admin ? html`<a class="menu-item" href="/admin" data-link>${icon("shield", 20)}Admin${icon("chevronRight", 16)}</a>` : ""}
-        <button class="menu-item" type="button" data-signout>${icon("signOut", 20)}Sign out</button>
-      </nav>
     </main>`);
+  applyAccent(el.querySelector("[data-credits]"), HOUSE_ACCENT);
   root.append(el);
   const offHead = bindHeader(el);
   el.querySelector("[data-signout]").addEventListener("click", async () => {
@@ -591,12 +622,14 @@ function creditCard(credits) {
   const perMin = session.options.credits_per_minute;
   const target = session.options.demo_reset_credits || 0;
   return html`
-    ${ring({ lit: (i) => i < Math.min(60, credits), cls: "credit-ring", label: `${credits} credits` })}
-    <span class="col grow"><strong class="credit-num">${credits} credits</strong>
-      <span class="muted small">${credits ? `About ${Math.round(credits / perMin)} minutes of pods, at ${perMin} credit a minute.` : "A free account: listen, call in and connect for free."}</span>
-      ${target ? html`<span class="reset-row"><button class="btn chip-btn small-btn" type="button" data-reset-credits
-        ${credits >= target ? "disabled" : ""} title="${credits >= target ? `You have ${target} or more` : `Back to ${target} credits`}">
-        ${icon("back", 14, 2.4)}Reset to ${target}</button><span class="faint small">Demo version: top up to ${target} any time.</span></span>` : ""}</span>`;
+    ${material()}
+    <span class="intro-air"><i aria-hidden="true"></i>Your balance</span>
+    <div class="ystage-num">${ring({ lit: (i) => i < Math.min(60, credits), cls: "credit-ring", label: `${credits} credits` })}
+      <span class="col"><strong class="credit-num">${credits}</strong><span class="pstage-facts">credit${credits === 1 ? "" : "s"}</span></span></div>
+    <p class="pstage-say">${credits ? `About ${Math.round(credits / perMin)} minutes of pods, at ${perMin} credit a minute.` : "Listening, calling in and connecting are free."}</p>
+    ${target ? html`<div class="ystage-reset"><button class="btn quiet" type="button" data-reset-credits
+      ${credits >= target ? "disabled" : ""} title="${credits >= target ? `You have ${target} or more` : `Back to ${target} credits`}">
+      ${icon("back", 14, 2.4)}Reset to ${target}</button><span class="pstage-facts">Demo version: top up any time.</span></div>` : ""}`;
 }
 
 /** Kept for callers that still open the account as a sheet: it's a page now. */

@@ -163,6 +163,12 @@ watchlist) with Make under it. The watchlist and the morning schedule follow as 
 "Ready for you" appears at the top only when there are briefings. On a phone, Make sits
 right after the length. The template editor is still a sheet.
 
+You (`youView` in `static/js/views/library.js`): the balance is a stage (ring, number,
+what it buys, the demo top-up), with the recent ledger, the account and Sign out under it;
+everything that's yours is tiles in three groups (Make something, Your sound, People and
+numbers). Beside each other on a wide window; on a phone the stage leads and the ledger,
+account and Sign out come after the tiles.
+
 Panels that were a form in a white box (`.page .card`, apart from the topic box, the memo
 recorder and the credit card) are open sections on the page like New pod, and the saved
 cards (personas, styles, templates) are filled tiles rather than outlined ones.

@@ -774,6 +774,51 @@
   @media (min-width: 600px) { .btile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (min-width: 1024px) { .briefings .bstage { min-height: 340px; } }
 
+  /* ---- You: your balance on a stage, and what's yours as tiles ----------------------------------------- */
+  .page.you { max-width: 760px; display: flex; flex-direction: column; gap: 0; }
+  .you-body { display: flex; flex-direction: column; }
+  .you-lists { display: flex; flex-direction: column; min-width: 0; }
+  .you-side { display: contents; }
+  .you-side > * { order: 1; margin-top: 12px; }
+  .you-side .ledger { margin-top: 30px; }
+  .you-side > .ystage { order: -1; margin: 6px 0 0; min-height: 0; gap: 14px; }
+  .ystage { gap: 14px; }
+  .ystage-num { display: flex; align-items: center; gap: 16px; margin-top: 4px; }
+  .ystage-num .credit-ring { --ring: 76px; flex: none; }
+  .ystage-num .col { gap: 0; }
+  .ystage .credit-num { font: 500 56px/.95 var(--f-head); letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+  .ystage .pstage-say { font-size: 16px; }
+  .ystage-reset { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  .ystage-reset .btn { background: rgba(255, 255, 255, .14); color: #fff; }
+  .ystage-reset .btn:hover:not(:disabled) { background: rgba(255, 255, 255, .22); }
+  .ystage-reset .btn:disabled { opacity: .45; }
+  .you-side .ledger { padding: 14px 16px; border-radius: 20px; background: var(--bg-2); gap: 8px; }
+  .you-side .ledger:empty { display: none; }
+  .you-side .you-who { margin: 6px 2px 0; gap: 12px; }
+  .you-side .you-who strong { font-weight: 700; }
+  .you-side .you-who .avatar, .you-side .you-who .avatar-img { --size: 44px; }
+  .ytile-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .ytile { display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 12px; border-radius: 22px; background: var(--bg-2); color: inherit; text-decoration: none;
+    transition: background .2s ease, box-shadow .2s ease, transform var(--dur-snappy) var(--spring-snappy); }
+  .ytile:hover { background: var(--surface); box-shadow: var(--shadow); }
+  .ytile:active { transform: scale(.985); }
+  .ytile-ic { flex: none; width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; color: #fff;
+    background: radial-gradient(120% 120% at 15% 0%, color-mix(in oklch, var(--k) 78%, #fff), var(--k) 70%); }
+  .ytile-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .ytile-text strong { display: flex; align-items: center; gap: 8px; font: 600 17px/1.15 var(--f-head); letter-spacing: -.02em; }
+  .ytile-text > span { font-size: 13.5px; line-height: 1.3; color: var(--fg-2); }
+  .ytile > svg:last-child { flex: none; color: var(--fg-3, var(--fg-2)); transition: transform .2s ease; }
+  .ytile:hover > svg:last-child { transform: translateX(3px); }
+  .ytile .btile-tag { background: var(--tally); color: #fff; }
+  @media (min-width: 600px) { .ytile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1024px) {
+    .page.you { max-width: 1160px; padding-inline: 48px; }
+    .you-body { display: grid; grid-template-columns: minmax(0, 1fr) 360px; column-gap: 56px; align-items: start; }
+    .you-side { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 88px; margin-top: 22px; }
+    .you-side > *, .you-side .ledger { order: 0; margin-top: 0; }
+    .you-side > .ystage { order: 0; margin: 0; padding: 26px; }
+  }
+
   /* ---- panels that were forms in a box: open sections on the page, like New pod ----------------------- */
   .page .card:not(.about-box, .recorder, .credit-card, .accent) { background: none; box-shadow: none; padding: 0; border-radius: 0; gap: 12px; }
   .page .card:not(.about-box, .recorder, .credit-card, .accent) + .card,
@@ -818,7 +863,7 @@
       main .shelf, main .intro-sec, main .mem-group, main .mem-block, main .create-h2, main .page > .card {
         animation: settle linear both; animation-timeline: view(block); animation-range: entry 0px entry 160px; }
       main .saved-card, main .pod-grid > li, main .lib-list > li, main .mem-row, main .nb-page, main .open-tile, main .mtile,
-      main .radio-card, main .ledger > li, main .menu-item, main .people > li, main .ptile, main .vtile, main .btile, main .brief-row, main .watch-row {
+      main .radio-card, main .ledger > li, main .menu-item, main .people > li, main .ptile, main .vtile, main .btile, main .brief-row, main .watch-row, main .ytile {
         animation: settle-row linear both; animation-timeline: view(block); animation-range: entry 0px entry 110px; }
       /* a shelf: cards come up to size as they slide in, and the edge with more behind it fades */
       .tpl-row > *, .shelf-row > *, .kept-row > *, .chapter-cards > * {
