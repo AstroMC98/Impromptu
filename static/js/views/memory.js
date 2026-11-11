@@ -21,9 +21,10 @@ const FLICK = 0.55;
 const GELS = ["#6A4FB0", "#2F6BD0", "#1F7F6A", "#B5521C", "#B8336A", "#2E6F9E"];
 const gel = (m) => GELS[[...(m.host_key || "shared")].reduce((n, c) => n + c.charCodeAt(0), 0) % GELS.length];
 /** Caller and audience memories belong to the hosts they came from: no moving them about. */
-const fixed = (m) => m?.scope === "caller" || m?.scope === "audience";
+const fixed = (m) => m?.scope === "caller" || m?.scope === "audience" || m?.scope === "self";
 const whose = (m) => (m.scope === "caller" ? `Caller · ${m.caller_name || "a listener"}`
   : m.scope === "audience" ? `${m.listeners || "Several"} listeners said`
+  : m.scope === "self" ? `${m.host || "Your co-host"} said`
   : m.scope === "shared" || !m.host ? "Every co-host" : m.host);
 /** A caller memory is stored as a sentence ('Jo called in to "…" and asked: …'). On screen
  *  the question stands on its own, with who asked it as a label. Anything reworded shows as is. */
@@ -32,7 +33,7 @@ const shown = (m) => {
   const hit = m.scope === "caller" ? CALLED.exec(m.text || "") : null;
   if (hit) return { text: `“${hit[3]}”`, tag: `${hit[1]} asked` };
   return { text: m.text, tag: m.scope === "caller" ? `Caller · ${m.caller_name || "a listener"}`
-    : m.scope === "audience" ? `${m.listeners || "Several"} listeners` : "" };
+    : m.scope === "audience" ? `${m.listeners || "Several"} listeners` : m.scope === "self" ? `${m.host || "Your co-host"} said` : "" };
 };
 const TABS = [["kept", "Kept"], ["notes", "Listener notes"], ["notebooks", "Notebooks"], ["settings", "Settings"]];
 
@@ -117,7 +118,7 @@ export async function memoryView(root) {
       </div>
       <div class="deck-actions">
         <button class="round-btn deck-btn" type="button" data-swipe="pass" aria-label="Forget it">${icon("close", 22, 2.4)}<span class="deck-lab" aria-hidden="true">Forget</span></button>
-        ${fixed(m) ? html`<span class="mem-for">For ${m.host || "your hosts"}</span>`
+        ${fixed(m) ? html`<span class="mem-for">${m.scope === "self" ? "So they stay consistent" : `For ${m.host || "your hosts"}`}</span>`
           : html`<button class="btn quiet mem-scope" type="button" data-scope>${m.scope === "shared" ? `Only for ${m.host || "this co-host"}` : "Share with every co-host"}</button>`}
         <button class="round-btn deck-btn" type="button" data-swipe="keep" aria-label="Keep it">${icon("heart", 22, 2.2)}<span class="deck-lab" aria-hidden="true">Keep</span></button>
       </div>
@@ -132,7 +133,7 @@ export async function memoryView(root) {
       <ul class="mem-list">${items.map((m) => html`
         <li class="mem-row">
           <span class="mem-text">${shown(m).tag ? html`<span class="mem-tag">${shown(m).tag}</span>` : ""}${shown(m).text}
-            ${fixed(m) && m.host ? html`<span class="note-meta">For ${m.host}</span>` : ""}</span>
+            ${fixed(m) && m.host && m.scope !== "self" ? html`<span class="note-meta">For ${m.host}</span>` : ""}</span>
           <button class="round-btn mem-btn" type="button" data-edit="${m.id}" aria-label="Edit: ${m.text}">${icon("edit", 16)}</button>
           <button class="round-btn mem-btn" type="button" data-forget="${m.id}" aria-label="Forget: ${m.text}">${icon("close", 16, 2.4)}</button>
         </li>`)}</ul>
@@ -143,6 +144,7 @@ export async function memoryView(root) {
     const shared = kept.filter((m) => !fixed(m) && (m.scope === "shared" || !m.host_key));
     const callers = kept.filter((m) => m.scope === "caller");
     const audience = kept.filter((m) => m.scope === "audience");
+    const said = kept.filter((m) => m.scope === "self");
     const hosts = [...new Map(kept.filter((m) => m.scope === "host" && m.host_key).map((m) => [m.host_key, m.host])).entries()];
     setHtml($("[data-kept]"), html`
       <div class="mem-kept-head">
@@ -151,6 +153,7 @@ export async function memoryView(root) {
       </div>
       ${group("Every co-host knows", shared)}
       ${hosts.map(([key, name]) => group(`Only ${name} knows`, kept.filter((m) => m.scope === "host" && m.host_key === key)))}
+      ${group("What your hosts have said about themselves", said)}
       ${group("Callers your hosts remember", callers)}
       ${group("What listeners have told your hosts", audience)}`);
     renderTabs();

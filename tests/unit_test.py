@@ -2251,6 +2251,32 @@ def _():
     assert "news desk" not in prompts.cohost_opening("Marc", 10, "Walk", "")
 
 
+@check("memory: what a host said about themselves is proposed, and handed back only to that host once kept")
+def _():
+    from app import memory
+
+    async def run():
+        store = LocalStore(tempfile.mkdtemp(prefix="podcasts-self-"))
+        found = [{"text": "Marc is training for a half marathon.", "scope": "host"},
+                 {"text": "Zoe Park said she grew up above a bakery in Busan.", "scope": "self"}]
+        assert await memory.propose(store, "u1", found, host="Zoe Park", show_id="c1", show_title="Call") == 2
+        items = await memory.all_items(store, "u1")
+        mine = next(m for m in items if m["scope"] == "self")
+        assert (mine["host_key"], mine["status"]) == ("zoe park", "pending")
+        assert await memory.recall(store, "u1", "Zoe Park") == []
+        for m in items:
+            m["status"] = "kept"
+            await store.put_item("u1", memory.KIND, m)
+        got = await memory.recall(store, "u1", "Zoe Park")
+        assert "Marc is training for a half marathon." in got
+        assert "You said: Zoe Park said she grew up above a bakery in Busan." in got
+        assert await memory.recall(store, "u1", "Nia Okoro") == []
+    asyncio.run(run())
+    assert "self" in prompts.memory_schema()["properties"]["memories"]["items"]["properties"]["scope"]["enum"]
+    system = prompts.MEMORY_SYSTEM.format(user="Marc", host="Zoe", limit=6)
+    assert "about THEMSELVES" in system and 'scope "self"' in system
+
+
 def main() -> int:
     width = max(len(n) for n, _, _ in RESULTS)
     for name, ok, err in RESULTS:

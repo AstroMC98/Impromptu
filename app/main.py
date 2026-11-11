@@ -1151,7 +1151,7 @@ async def edit_memory(memory_id: str, body: MemoryEdit, request: Request) -> dic
         if not text:
             raise HTTPException(status_code=422, detail="A memory can't be empty. Remove it instead.")
         item["text"] = text
-    if body.scope is not None and item.get("scope") not in ("caller", "audience"):
+    if body.scope is not None and item.get("scope") not in ("caller", "audience", "self"):
         item["scope"] = body.scope if body.scope == "shared" or item.get("host_key") else "shared"
     item["updated_at"] = time.time()
     await store.put_item(user.uid, memory.KIND, item)

@@ -954,7 +954,8 @@ def cohost_system(req: CohostRequest, host: Host, user_name: str, notes: str, lo
         material = (f"\nWHAT YOU REMEMBER about {user_name} from earlier conversations. Use it the way a "
                     f"friend would: bring one up when it's relevant, ask how something turned out, don't "
                     f"recite it, and don't say you have a list. If {user_name} says one is wrong or has "
-                    f"changed, take their word for it.\n{remembered}\n")
+                    f"changed, take their word for it. A line that starts \"You said\" is something you said "
+                    f"about yourself before: stay consistent with it.\n{remembered}\n")
     if notes.strip() and lookup:
         material += (f"\nNOTES from {user_name} are long, so you have a brief of them below and can search "
                     f"the full notes with the check_notes tool. Check them before you state a name, number, "
@@ -985,8 +986,7 @@ life, what they like and can't stand, how they like to be talked to. Only what {
 said themselves or clearly agreed to.
 
 Leave out: the topic of this conversation as such, opinions that were only part of a \
-debate or a role they played, anything {host} said about themselves, small talk, and \
-anything in the ALREADY KNOWN list. Leave out health, money, politics, religion and \
+debate or a role they played, small talk, and anything in the ALREADY KNOWN list. Leave out health, money, politics, religion and \
 other sensitive details unless {user} plainly offered them as something about \
 themselves. If nothing is worth keeping, return an empty list; most short calls have \
 one to three.
@@ -994,7 +994,14 @@ one to three.
 For each memory, scope is "host" when it matters mostly to this co-host's kind of \
 conversation, and "shared" when any co-host would want to know it (their name, job, \
 family, standing preferences). At most {limit}, the most useful first. Write them in \
-the language of the conversation."""
+the language of the conversation.
+
+Separately, note what {host} said about THEMSELVES that they should stay consistent \
+with next time: a detail of their own life or past they mentioned, a firm opinion they \
+took as themselves, a running joke they started, something they promised for next time. \
+One sentence each, naming {host} ("{host} said they grew up above a bakery."), with \
+scope "self". Not a part they played in a roleplay, a side they only took for a debate, \
+or anything about {user}. At most 2, and none if {host} said nothing of the kind."""
 
 
 SENTIMENT_SYSTEM = """\
@@ -1052,7 +1059,7 @@ def memory_schema() -> dict:
         "type": "object",
         "properties": {"memories": {"type": "array", "items": {
             "type": "object",
-            "properties": {"text": {"type": "string"}, "scope": {"type": "string", "enum": ["host", "shared"]}},
+            "properties": {"text": {"type": "string"}, "scope": {"type": "string", "enum": ["host", "shared", "self"]}},
             "required": ["text", "scope"],
         }}},
         "required": ["memories"],

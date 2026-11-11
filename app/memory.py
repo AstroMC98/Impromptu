@@ -9,9 +9,11 @@ of them, and go into the co-host's instructions on the next call that has memory
 Memories are saved items of kind "memories" (store.list_items / put_item), so they work
 on every store with no new collection code:
 
-    {id, text, status: "pending" | "kept", scope: "host" | "shared" | "caller" | "audience",
+    {id, text, status: "pending" | "kept", scope: "host" | "shared" | "self" | "caller" | "audience",
      host, host_key, show_id, show_title, created_at, updated_at}
 
+Scope "self" is something a co-host said about themselves on a call (where they grew up,
+an opinion they took, a running joke), kept so they stay consistent next time.
 Scope "audience" is something several listeners said in notes they left (feedback.py),
 for the hosts those notes were about (host_keys).
 
@@ -39,6 +41,7 @@ MAX_PENDING = 40           # proposals waiting for a swipe; the oldest drop off 
 PER_CALL = 6               # proposals one call can make
 PROMPT_ITEMS = 40          # memories a co-host is handed for one call
 SCOPES = ("host", "shared")
+SELF_NOTES = 8             # things a host said about themselves that they're handed back
 CALLERS_PER_SHOW = 8       # callers one show can propose
 MAX_PENDING_CALLERS = 20   # caller proposals waiting at once; more are not added, so they can't crowd out your own
 CALLER_NOTES = 3           # what a host is told about a returning caller, at most
@@ -72,6 +75,7 @@ async def recall(store: Store, uid: str, host_name: str) -> list[str]:
     key = host_key(host_name)
     kept = [m for m in await all_items(store, uid) if m.get("status") == "kept"]
     own = [m["text"] for m in kept if m.get("scope") == "host" and m.get("host_key") == key]
+    own += [f"You said: {m['text']}" for m in kept if m.get("scope") == "self" and m.get("host_key") == key][:SELF_NOTES]
     shared = [m["text"] for m in kept if m.get("scope") == "shared"]
     return (own + shared + [f"Listeners have said: {t}" for t in audience(kept, host_name)])[:PROMPT_ITEMS]
 
@@ -87,7 +91,7 @@ def audience(items: list[dict], host_name: str) -> list[str]:
 
 
 def new_item(text: str, *, status: str, scope: str, host: str, show_id: str = "", show_title: str = "") -> dict:
-    scope = scope if scope in SCOPES else "host"
+    scope = scope if scope in SCOPES or scope == "self" else "host"
     return {
         "id": secrets.token_urlsafe(8), "text": clean_text(text), "status": status, "scope": scope,
         "host": " ".join(str(host or "").split())[:40], "host_key": host_key(host),
@@ -153,7 +157,7 @@ async def propose(store: Store, uid: str, found: list[dict], *, host: str, show_
     items = await all_items(store, uid)
     known = [m["text"] for m in items]
     added = 0
-    for f in found[:PER_CALL]:
+    for f in found[:PER_CALL + 2]:      # the two extra are what the host said about themselves
         text = clean_text(f.get("text", ""))
         if len(text) < 8 or any(_same(text, k) for k in known):
             continue
