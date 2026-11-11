@@ -869,6 +869,18 @@
   .cast-more .persona-more { box-shadow: none; padding-top: 4px; }
   .sheet-overlay.stage .cast-more .field { background: rgba(255, 255, 255, .1); }
 
+  /* ---- the voice memo page: the recorder leads; what you'll get stands beside it on a wide window ----- */
+  .memo-page .memo-stage { display: none; }
+  .memo-page .research-card { margin-top: 0; }
+  .memo-page .recorder { border-radius: 28px; }
+  @media (min-width: 600px) {
+    .memo-page .radio-cards[data-music] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+  }
+  @media (min-width: 1024px) {
+    .memo-page .memo-stage { display: flex; }
+    .memo-page .memo-stage .pstage-name { font-size: 26px; }
+  }
+
   /* ---- panels that were forms in a box: open sections on the page, like New pod ----------------------- */
   .page .card:not(.about-box, .recorder, .credit-card, .accent) { background: none; box-shadow: none; padding: 0; border-radius: 0; gap: 12px; }
   .page .card:not(.about-box, .recorder, .credit-card, .accent) + .card,

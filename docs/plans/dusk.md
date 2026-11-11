@@ -178,6 +178,13 @@ voice sample, your personas and the cast as tiles, and the detailed fields folde
 "Fine-tune them". `cast.js` also holds the stage, voice shape and sample player the Personas
 page uses.
 
+Styles (`static/js/views/styles.js`) mirror Personas: yours and the house vibes as tiles, the
+picked one on a stage, and an editor page (`/styles?edit=new`, `?edit=<id>`, `?from=<vibe>`)
+with a name, how it should sound (with starters) and a colour. `views/saved.js` is gone.
+The voice memo page keeps its recorder first; on a wide window a stage beside it says what
+you'll get (memo or not, format, length and music, whether you review the outline), with
+Make under it. On a phone that stage is hidden and the bar at the bottom carries Make.
+
 Panels that were a form in a white box (`.page .card`, apart from the topic box, the memo
 recorder and the credit card) are open sections on the page like New pod, and the saved
 cards (personas, styles, templates) are filled tiles rather than outlined ones.

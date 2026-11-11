@@ -3,6 +3,7 @@
 // happens next shows on the pod's own page (views/memo-status.js).
 import { api } from "../api.js";
 import { MemoRecorder, extensionFor, recordingSupported } from "../audio/recorder.js";
+import { material } from "../components.js";
 import { html, setHtml } from "../html.js";
 import { icon } from "../icons.js";
 import { albumChips, introRow, lengthChip, musicCards, newAlbumSheet, shareWith, visibilityCards } from "../pod-options.js";
@@ -47,8 +48,8 @@ export async function memoView(root) {
     ${appHeader({ search: false, nav: false })}
     <main class="create memo-page">
       <div class="create-title">
-        <h1>Make a pod from a voice memo</h1>
-        <p class="muted">Talk it through, rough is fine. The hosts look things up, shape it into a story and record a finished episode, music and all.</p>
+        <h1 class="two">From a voice memo.<span class="ask">Rough is fine.</span></h1>
+        <p class="muted">Talk it through. The hosts look things up, shape it into a story and record a finished episode, music and all.</p>
       </div>
       <div data-free></div>
       <section class="card recorder" style="--gel:#FFB257" aria-label="Your memo" data-recorder></section>
@@ -66,11 +67,13 @@ export async function memoView(root) {
       <h2 class="create-h2">Intro</h2>
       <div data-intro></div>
 
-      <div class="switch-row review-row">
-        <span id="review-label" class="col"><span>Review the outline first</span>
-          <span class="muted small">See what was heard, what the research found and the plan, and change it, before it's recorded. Credits are used when you press Produce.</span></span>
-        <button type="button" role="switch" class="switch" aria-labelledby="review-label" data-review></button>
-      </div>
+      <h2 class="create-h2">Before it's recorded <span class="faint small">optional</span></h2>
+      <button type="button" role="switch" class="radio-card research-card" data-review aria-checked="false">
+        <span class="radio-dot" aria-hidden="true"></span>
+        <span class="radio-text"><span class="radio-title">${icon("note", 16)} Review the outline first</span>
+          <span class="radio-desc">See what was heard, what the research found and the plan, and change it, before it's recorded.
+            Credits are used when you press Produce.</span></span>
+      </button>
 
       <h2 class="create-h2">Who can listen?</h2>
       <div class="radio-cards" role="radiogroup" aria-label="Who can listen" data-visibility></div>
@@ -90,10 +93,13 @@ export async function memoView(root) {
       </details>
 
       <p class="error" role="alert" data-error></p>
-      <div class="go-bar">
-        <p class="cost" data-cost></p>
-        <button class="btn white big block go" type="button" data-go></button>
-      </div>
+      <aside class="create-side" aria-label="Your episode">
+        <div class="intro-stage stage cstage memo-stage" data-stage aria-live="polite"></div>
+        <div class="go-bar">
+          <p class="cost" data-cost></p>
+          <button class="btn white big block go" type="button" data-go></button>
+        </div>
+      </aside>
     </main>`);
   root.append(el);
   const offHead = bindHeader(el);
@@ -124,7 +130,7 @@ export async function memoView(root) {
           <span class="faint small">${paused ? "Paused" : `Up to ${fmtTime(limits.max_seconds)}`}</span>
         </div>
         <div class="row gap">
-          <button class="btn outline grow" type="button" data-rec-pause>${paused ? "Resume" : "Pause"}</button>
+          <button class="btn quiet grow" type="button" data-rec-pause>${paused ? "Resume" : "Pause"}</button>
           <button class="btn white grow" type="button" data-rec-stop>${icon("stop", 16, 2.4)}Done</button>
         </div>
         <button class="btn link" type="button" data-rec-cancel>Start over</button>`);
@@ -139,8 +145,8 @@ export async function memoView(root) {
         <audio class="memo-audio" controls preload="metadata" src="${m.url}"></audio>
         <p class="muted small">${m.name}${m.seconds ? ` · ${fmtTime(m.seconds)}` : ""} · ${(m.blob.size / 1e6).toFixed(1)} MB</p>
         <div class="row gap">
-          ${recordingSupported() ? html`<button class="btn outline grow" type="button" data-rec-start>${icon("mic", 16)}Record again</button>` : ""}
-          <button class="btn outline grow" type="button" data-upload>${icon("addFile", 16)}Choose another</button>
+          ${recordingSupported() ? html`<button class="btn quiet grow" type="button" data-rec-start>${icon("mic", 16)}Record again</button>` : ""}
+          <button class="btn quiet grow" type="button" data-upload>${icon("addFile", 16)}Choose another</button>
         </div>`);
       return;
     }
@@ -154,7 +160,7 @@ export async function memoView(root) {
           <span class="strong">Tap to record</span>` : html`
           <p class="faint small">Recording needs the app on a secure (https) address. You can still upload a recording.</p>`}
       </div>
-      <button class="btn outline block" type="button" data-upload>${icon("addFile", 16)}Upload a recording</button>
+      <button class="btn quiet block" type="button" data-upload>${icon("addFile", 16)}Upload a recording</button>
       <p class="faint small">On a walk with your phone locked? Record in your phone's voice memos app, then upload it here.
         Up to ${limits.max_mb} MB and ${Math.round(limits.max_seconds / 60)} minutes.</p>`);
   };
@@ -221,7 +227,27 @@ export async function memoView(root) {
   // ---- the rest of the choices ------------------------------------------------------------
 
   const cost = () => session.cost(state.minutes) + (state.music === "generate" ? session.options.music?.credits || 0 : 0);
+  // The episode before it exists: whether there's a memo yet, and what will be made of it.
+  const renderStage = () => {
+    const t = state.template ? session.template(state.template) : null;
+    const rec = recorder && ["recording", "paused", "stopping"].includes(recorder.state);
+    const music = state.music === "none" ? "no music" : state.music === "generate" ? "original music"
+      : data.music.find((m) => m.id === state.music) ? "your theme" : "studio theme";
+    const box = $("[data-stage]");
+    applyAccent(box, t?.accent || "#B5521C");
+    setHtml(box, html`
+      ${material()}
+      <span class="intro-air"><i aria-hidden="true"></i>Your episode</span>
+      <div class="col cstage-names"><strong class="pstage-name">${state.memo ? "Memo ready" : rec ? "Recording…" : "Waiting for your memo"}</strong>
+        <span class="pstage-facts">${state.memo ? `${state.memo.seconds ? `${fmtTime(state.memo.seconds)} of you talking` : state.memo.name}` : "Record it here, or upload one"}</span></div>
+      <ol class="bstage-run">
+        <li><b>1</b>${t ? t.label : "A format picked from what you said"}</li>
+        <li><b>2</b>${state.minutes} minutes, ${music}</li>
+        <li><b>3</b>${state.review ? "You check the outline first" : "Recorded straight through"}</li>
+      </ol>`);
+  };
   const renderCost = () => {
+    renderStage();
     const c = cost();
     const enough = session.credits >= c;
     $("[data-cost]").textContent = `Uses ${c} credit${c === 1 ? "" : "s"}${
@@ -286,6 +312,7 @@ export async function memoView(root) {
     } else if (t.closest("[data-template]")) {
       state.template = t.closest("[data-template]").dataset.template || null;
       renderFormats();
+      renderStage();
     } else if (t.closest("[data-use-intro]")) {
       state.useIntro = !state.useIntro;
       renderIntro();

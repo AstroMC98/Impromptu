@@ -20,7 +20,7 @@ import { libraryPageView, libraryView, youView } from "./views/library.js";
 import { loginView } from "./views/login.js";
 import { memoView } from "./views/memo.js";
 import { personasView } from "./views/personas.js";
-import { savedView } from "./views/saved.js";
+import { stylesView } from "./views/styles.js";
 import { showView } from "./views/show.js";
 import { showStatsView, statsView } from "./views/stats.js";
 
@@ -64,7 +64,7 @@ async function boot() {
     [/^\/cohost\/([\w-]+)$/, cohostCallView],
     [/^\/login$/, loginView],
     [/^\/personas$/, personasView],
-    [/^\/styles$/, savedView],
+    [/^\/styles$/, stylesView],
     [/^\/connections$/, connectionsView],
     [/^\/invite\/([\w-]+)$/, inviteView],
     [/^\/admin$/, adminView],
