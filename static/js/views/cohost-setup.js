@@ -3,16 +3,16 @@
 // your saved show intro, and who can hear the episode. "Start the call" opens the
 // mic (inside the click) and spends the credits.
 import { api } from "../api.js";
+import { facts, openCastSheet, shape } from "../cast.js";
 import { micSupported, startCallAudio, takeHandoff } from "../cohost/audio.js";
+import { material } from "../components.js";
 import { html, setHtml } from "../html.js";
 import { icon, KIND_ICON } from "../icons.js";
-import { bindPersonaForm, fillPersona, personaCard, personaFields, readPersona } from "../personas.js";
 import { introRow, lengthChip } from "../pod-options.js";
 import { navigate } from "../router.js";
 import { mountRules } from "../rules.js";
 import { loginPath, session } from "../session.js";
 import { applyAccent } from "../theme.js";
-import { openSheet } from "../ui.js";
 import { store as local, toast } from "../util.js";
 import { appHeader, bindHeader } from "./library.js";
 
@@ -57,9 +57,8 @@ export async function cohostSetupView(root) {
     ${appHeader({ search: false, nav: false })}
     <main class="create">
       <div class="create-title">
-        <h1>Co-host live</h1>
-        <p class="muted">Talk into your phone and an AI co-host banters, asks or argues back in real time.
-          Hang up, and it's an episode.</p>
+        <h1 class="two">Co-host live.<span class="ask">Talk it through, out loud.</span></h1>
+        <p class="muted">You talk, and an AI co-host banters, asks or argues back in real time. Hang up, and it's an episode.</p>
       </div>
       <div data-free></div>
 
@@ -72,8 +71,8 @@ export async function cohostSetupView(root) {
           <textarea id="notes" class="field area" placeholder="Facts, an article, your outline. Your co-host draws on it; it isn't read out."></textarea>
           <div class="attach-chips" data-chips></div>
           <div class="row gap tools">
-            <button type="button" class="btn outline grow" data-pick>${icon("file", 16)}File</button>
-            <button type="button" class="btn outline grow" data-link-toggle>${icon("link", 16)}Link</button>
+            <button type="button" class="btn quiet grow" data-pick>${icon("file", 16)}File</button>
+            <button type="button" class="btn quiet grow" data-link-toggle>${icon("link", 16)}Link</button>
             <input type="file" data-file multiple hidden accept="${(session.options.file_types || []).join(",")}">
           </div>
           <form class="link-form row gap" data-link-form hidden>
@@ -86,10 +85,10 @@ export async function cohostSetupView(root) {
       </section>
 
       <h2 class="create-h2">Your co-host</h2>
-      <button type="button" class="cohost-pick" data-host aria-label="Change your co-host"></button>
+      <div class="ptile-grid host-tiles one" data-host-box></div>
 
       <h2 class="create-h2">How should they play it?</h2>
-      <div class="radio-cards mode-cards" role="radiogroup" aria-label="How your co-host plays it" data-modes></div>
+      <div class="open-grid" role="radiogroup" aria-label="How your co-host plays it" data-modes></div>
       <p class="faint small mode-hint">You can switch during the call.</p>
 
       ${session.options.memory ? html`<h2 class="create-h2">Memory <span class="faint small">optional</span></h2>
@@ -117,11 +116,14 @@ export async function cohostSetupView(root) {
       </details>
 
       <p class="error" role="alert" data-error></p>
-      <div class="go-bar">
-        <p class="cost" data-cost></p>
-        <button class="btn white big block go" type="button" data-go>${icon("mic", 20, 2.2)}Start the call</button>
-        <p class="faint small go-hint">${icon("headphones", 14)} Best with headphones</p>
-      </div>
+      <aside class="create-side" aria-label="Your call">
+        <div class="intro-stage stage cstage" data-stage aria-live="polite"></div>
+        <div class="go-bar">
+          <p class="cost" data-cost></p>
+          <button class="btn white big block go" type="button" data-go>${icon("mic", 20, 2.2)}Start the call</button>
+          <p class="faint small go-hint">${icon("headphones", 14)} Best with headphones</p>
+        </div>
+      </aside>
     </main>`);
   root.append(el);
   const offHead = bindHeader(el);
@@ -167,6 +169,21 @@ export async function cohostSetupView(root) {
     $("#topic-label").textContent = wording().label;
     $("#topic").placeholder = wording().hint;
   };
+  // The call before it starts: you and your co-host, how they'll play it, and what about.
+  const renderStage = () => {
+    const m = mode();
+    const you = ($("#your-name")?.value || session.me.name).trim().split(/\s+/)[0] || "You";
+    const topic = $("#topic").value.trim();
+    const box = $("[data-stage]");
+    applyAccent(box, m?.accent || "#B8336A");
+    setHtml(box, html`
+      ${material()}
+      <span class="intro-air"><i aria-hidden="true"></i>Your call</span>
+      <div class="cstage-pair">${shape(you, 54)}${shape(state.host.name || "Your co-host", 54)}</div>
+      <div class="col cstage-names"><strong class="pstage-name">${you} and ${state.host.name || "your co-host"}</strong>
+        <span class="pstage-facts">${[m?.label, `up to ${state.minutes} min`, state.useMemory && session.options.memory ? "memory on" : ""].filter(Boolean).join(" · ")}</span></div>
+      <p class="pstage-say ${topic ? "" : "dim"}">${topic ? (topic.length > 150 ? `${topic.slice(0, 148).trimEnd()}…` : topic) : wording().label}</p>`);
+  };
   const notes = $("#notes");
 
   // ---- rendering ---------------------------------------------------------------------
@@ -183,19 +200,28 @@ export async function cohostSetupView(root) {
   };
   const renderHost = () => {
     const h = state.host;
-    setHtml($("[data-host]"), html`${personaCard({ ...h, name: h.name || "Your co-host", persona: h.persona || "Warm, quick-witted and curious about everything." })}
-      <span class="pick-edit">${icon("edit", 18)}</span>`);
+    setHtml($("[data-host-box]"), html`
+      <button type="button" class="ptile" data-host aria-label="Change your co-host${h.name ? `: ${h.name}` : ""}">
+        ${shape(h.name || "Your co-host", 44)}
+        <span class="ptile-text"><strong>${h.name || "Your co-host"}</strong>
+          <span class="ptile-say">${h.persona || "Warm, quick-witted and curious about everything."}</span>
+          <span class="ptile-facts">${facts(h)}${h.context ? " · private notes" : ""}</span></span>
+        <span class="ptile-edit" aria-hidden="true">${icon("edit", 16)}</span>
+      </button>`);
     renderMemory();
+    renderStage();
   };
   const renderModes = () => setHtml($("[data-modes]"), html`${modes.map((m) => html`
-    <button type="button" role="radio" class="radio-card mode-card" data-mode="${m.id}" aria-checked="${state.mode === m.id}" style="--tile:${m.accent}">
-      <span class="radio-dot" aria-hidden="true"></span>
-      <span class="radio-text"><span class="radio-title">${m.label}</span><span class="radio-desc">${m.blurb}</span></span>
+    <button type="button" role="radio" class="open-tile" data-mode="${m.id}" aria-checked="${state.mode === m.id ? "true" : "false"}" style="--k:${m.accent}">
+      <span class="open-dot" aria-hidden="true"></span>
+      <strong>${m.label}</strong>
+      <span class="open-blurb">${m.blurb}</span>
     </button>`)}`);
   const renderLengths = () => {
     setHtml($("[data-lengths]"), html`${LENGTHS.map((m) => html`
       ${lengthChip(m, state.minutes === m)}`)}`);
     renderCost();
+    renderStage();
   };
   const renderVisibility = () => {
     setHtml($("[data-visibility]"), html`${VISIBILITY.map(([id, title, ic, desc]) => html`
@@ -272,9 +298,12 @@ export async function cohostSetupView(root) {
       renderTopic();
       renderModes();
       tint();
+      renderStage();
+      el.querySelector(`[data-mode="${state.mode}"]`)?.focus({ preventScroll: true });
     } else if (t.closest("[data-toggle-memory]")) {
       state.useMemory = !state.useMemory;
       renderMemory();
+      renderStage();
     } else if (t.closest("[data-min]")) {
       state.minutes = Number(t.closest("[data-min]").dataset.min);
       renderLengths();
@@ -342,32 +371,16 @@ export async function cohostSetupView(root) {
     updateMeta();
     briefSoon(1500);
   });
+  $("#topic").addEventListener("input", renderStage);
+  $("#your-name").addEventListener("input", renderStage);
 
   function editHost() {
-    const form = document.createElement("form");
-    form.className = "stack";
-    setHtml(form, html`
-      <p class="field-label">Cast a persona</p>
-      ${data.personas.length ? html`
-        <p class="faint small">Yours</p>
-        <div class="chips">${data.personas.map((p) => html`<button type="button" class="chip" data-persona="${p.id}">${p.name}</button>`)}</div>` : ""}
-      <p class="faint small">The cast</p>
-      <div class="chips">${presets.map((p) => html`<button type="button" class="chip" data-preset="${p.id}">${p.name}</button>`)}</div>
-      ${personaFields(state.host, { prefix: "co", required: true })}
-      <p class="error" role="alert" data-error></p>
-      <button class="btn white big block" type="submit">Done</button>`);
-    bindPersonaForm(form, "co");
-    const sheet = openSheet({ title: "Your co-host", body: form });
-    form.addEventListener("click", (e) => {
-      const mine = data.personas.find((x) => x.id === e.target.closest("[data-persona]")?.dataset.persona);
-      const preset = session.personaPreset(e.target.closest("[data-preset]")?.dataset.preset);
-      if (mine || preset) fillPersona(form, mine || preset, "co");
-    });
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      state.host = hostOf(readPersona(form, "co"));
-      renderHost();
-      sheet.close();
+    openCastSheet({
+      title: "Your co-host", host: state.host, personas: data.personas,
+      onDone: (next) => {
+        state.host = hostOf(next);
+        renderHost();
+      },
     });
   }
 

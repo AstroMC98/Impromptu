@@ -819,6 +819,56 @@
     .you-side > .ystage { order: 0; margin: 0; padding: 26px; }
   }
 
+  /* ---- New pod and Co-host live: what you're making on a stage; hosts as tiles; a casting sheet ------- */
+  .create-title h1.two { font-size: clamp(30px, 5vw, 46px); }
+  .create-title p { margin-top: 10px; }
+  .create .cstage { order: -2; margin-top: 18px; min-height: 0; gap: 12px; }
+  .cstage-top { display: flex; align-items: center; gap: 14px; margin-top: 4px; }
+  .cstage-top .col { min-width: 0; gap: 4px; }
+  .cstage-cover { flex: none; width: 72px; height: 72px; border-radius: 16px; background: var(--cover, linear-gradient(140deg, var(--gel), var(--flood))) center / cover;
+    box-shadow: 0 16px 28px -16px rgba(0, 0, 0, .7); }
+  .cstage .pstage-name { font-size: 22px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .cstage-hosts { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 650; color: var(--on-dim); }
+  .cstage-hosts .orb + .orb { margin-left: -14px; }
+  .cstage-hosts .orb::before, .cstage-pair .orb::before { opacity: .95; }
+  .cstage-hosts span:last-child { margin-left: 4px; }
+  .cstage-pair { display: flex; margin-top: 4px; }
+  .cstage-pair .orb + .orb { margin-left: -16px; }
+  .cstage-names { gap: 4px; }
+  .cstage .pstage-say.dim { color: var(--on-dim); }
+  .cstage .intro-music { margin-top: 0; }
+  .host-tiles { grid-template-columns: minmax(0, 1fr); }
+  .host-tiles .ptile { align-items: center; }
+  .ptile-edit { flex: none; margin-left: auto; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); color: var(--fg-2); }
+  .ptile:hover .ptile-edit { color: var(--fg); }
+  @media (min-width: 600px) { .host-tiles:not(.one) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .create .len-chip { background: var(--bg-2); box-shadow: none; border-radius: 20px; }
+  .create .len-chip[aria-pressed="true"] { background: var(--surface); box-shadow: inset 0 0 0 2px var(--fg), var(--shadow); }
+  @media (min-width: 600px) {
+    .create [data-visibility] { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
+    .create [data-visibility] .radio-card { align-items: flex-start; }
+  }
+  .cohost-setup .mode-hint { margin-top: 10px; }
+  @media (min-width: 1024px) {
+    .create-side .cstage { order: 0; margin: 0; min-height: 320px; padding: 26px; }
+    .create-side .cstage .pstage-name { font-size: 26px; }
+    .create-side .cstage-cover { width: 96px; height: 96px; border-radius: 20px; }
+  }
+  .cast-sheet { display: flex; flex-direction: column; gap: 14px; }
+  .cast-sheet .pstage { order: 0; margin: 0; }
+  .cast-h { margin: 6px 2px -4px; font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--fg-2); }
+  .cast-sheet .ptile { padding: 10px 12px; border-radius: 18px; align-items: center; }
+  .cast-sheet .ptile-text strong { font-size: 15.5px; }
+  .cast-sheet .ptile-say { -webkit-line-clamp: 1; font-size: 13px; }
+  .cast-sheet .ptile-plus { width: 34px; height: 34px; }
+  .cast-more { border-radius: 20px; background: var(--bg-2); padding: 4px 14px; }
+  .cast-more[open] { padding-bottom: 14px; }
+  .cast-more summary { display: flex; align-items: center; gap: 8px; min-height: 48px; cursor: pointer; font-weight: 700; list-style: none; }
+  .cast-more summary::-webkit-details-marker { display: none; }
+  .cast-more .field { background: var(--surface); }
+  .cast-more .persona-more { box-shadow: none; padding-top: 4px; }
+  .sheet-overlay.stage .cast-more .field { background: rgba(255, 255, 255, .1); }
+
   /* ---- panels that were forms in a box: open sections on the page, like New pod ----------------------- */
   .page .card:not(.about-box, .recorder, .credit-card, .accent) { background: none; box-shadow: none; padding: 0; border-radius: 0; gap: 12px; }
   .page .card:not(.about-box, .recorder, .credit-card, .accent) + .card,

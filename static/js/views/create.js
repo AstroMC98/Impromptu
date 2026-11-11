@@ -1,21 +1,22 @@
 // /new — set up a pod: source, template or vibe, hosts and personas, length,
 // who can listen. Creating needs credits; going live spends them.
-import { coverUrl } from "../cover.js";
+import { openCastSheet, shape } from "../cast.js";
+import { material } from "../components.js";
+import { coverStyle } from "../cover.js";
 import { api } from "../api.js";
 import { unlockAudio } from "../audio/context.js";
 import { countIn, goStage } from "../golive.js";
 import { html, setHtml } from "../html.js";
 import { icon, KIND_ICON } from "../icons.js";
-import { bindPersonaForm, fillPersona, GENDER_LABEL, personaFields, readPersona } from "../personas.js";
+import { GENDER_LABEL } from "../personas.js";
 import { albumChips, introRow, lengthChip, newAlbumSheet, shareWith, visibilityCards } from "../pod-options.js";
 import { navigate } from "../router.js";
 import { mountRules } from "../rules.js";
 import { loginPath, session } from "../session.js";
 import { vibeTile } from "../sheets.js";
-import { applyAccent, gelFor, initial } from "../theme.js";
-import { openSheet } from "../ui.js";
-import { store as local, toast } from "../util.js";
-import { appHeader, bindHeader, sleeve, templateCard } from "./library.js";
+import { applyAccent, gelFor } from "../theme.js";
+import { store as local } from "../util.js";
+import { appHeader, bindHeader, templateCard } from "./library.js";
 
 const LENGTHS = [5, 10, 15];
 const BLANK_HOST = { name: "", voice: "auto", persona: "", gender: "", likes: "", specialties: "", skills: "", context: "" };
@@ -52,8 +53,8 @@ export async function createView(root, { query }) {
     ${appHeader({ search: false, nav: false })}
     <main class="create">
       <div class="create-title">
-        <h1>New pod</h1>
-        <p class="muted">Start with anything. Add more while it's live.</p>
+        <h1 class="two">New pod.<span class="ask">Start with anything.</span></h1>
+        <p class="muted">A topic, a file, a link or a photo. You can add more while it's live.</p>
         <a class="memo-link" href="/memo" data-link>${icon("mic", 16)}Got a rough voice memo? Turn it into a finished episode</a>
       </div>
       <div data-free></div>
@@ -68,9 +69,9 @@ export async function createView(root, { query }) {
         <textarea id="about-text" class="field area" placeholder="Genesis, chapters 1 to 3. Or paste an article, meeting notes, last quarter's numbers…"></textarea>
         <div class="attach-chips" data-chips></div>
         <div class="row gap tools">
-          <button type="button" class="btn outline grow" data-pick="file">${icon("file", 16)}File</button>
-          <button type="button" class="btn outline grow" data-link-toggle>${icon("link", 16)}Link</button>
-          <button type="button" class="btn outline grow" data-pick="photo">${icon("photo", 16)}Photo</button>
+          <button type="button" class="btn quiet grow" data-pick="file">${icon("file", 16)}File</button>
+          <button type="button" class="btn quiet grow" data-link-toggle>${icon("link", 16)}Link</button>
+          <button type="button" class="btn quiet grow" data-pick="photo">${icon("photo", 16)}Photo</button>
           <input type="file" data-file="file" multiple hidden accept="${[...(session.options.file_types || []), ...(session.options.image_types || [])].join(",")}">
           <input type="file" data-file="photo" hidden accept="${(session.options.image_types || []).join(",") || "image/*"}">
         </div>
@@ -89,7 +90,7 @@ export async function createView(root, { query }) {
       <label class="check-row save-style" data-save-style hidden><input type="checkbox" name="save_style"><span>Save this to my styles</span></label>
 
       <h2 class="create-h2">Who's hosting?</h2>
-      <div class="host-cards" data-hosts></div>
+      <div class="ptile-grid host-tiles" data-hosts></div>
       <button type="button" class="btn link" data-host-count></button>
 
       <h2 class="create-h2">How long?</h2>
@@ -120,7 +121,7 @@ export async function createView(root, { query }) {
 
       <p class="error" role="alert" data-error></p>
       <aside class="create-side" aria-label="Your pod">
-        <div class="preview-sleeve" data-preview aria-live="polite" aria-label="Your pod so far"></div>
+        <div class="intro-stage stage cstage" data-preview aria-live="polite" aria-label="Your pod so far"></div>
         <div class="go-bar">
           <p class="cost" data-cost></p>
           <button class="btn white big block go" type="button" data-go><span class="rec-dot" aria-hidden="true"></span>Go live</button>
@@ -156,32 +157,38 @@ export async function createView(root, { query }) {
     renderPreview();
   };
 
-  // The pod before it exists: its sleeve, lit by the vibe, titled by what you've typed.
+  // The pod before it exists, on a small stage lit by the vibe: its cover and title as you
+  // type, who's hosting, and what the hosts have to go on.
   let previewKey = "";
   const renderPreview = () => {
     const p = picked();
+    const accent = p?.accent || "#2F6BD0";
     const first = textArea.value.trim().split("\n")[0] || state.attachments[0]?.name || "";
     const title = first.length > 64 ? `${first.slice(0, 62).trimEnd()}…` : first;
     const label = p?.label || (state.pick.kind === "preset" ? session.preset(state.pick.id)?.label : "")
       || (state.pick.kind === "own" ? "Your own style" : "");
     const names = state.hosts.map((h) => h.name).filter(Boolean);
-    const who = names.length === state.hosts.length && names.length ? names.join(" and ") : state.hosts.length === 1 ? "one host" : "two hosts";
-    const line = [label, who, `${state.minutes} min`].filter(Boolean).join(", ");
-    const key = `${title}|${p?.accent}|${line}`;
+    const who = names.length === state.hosts.length && names.length ? names.join(" and ")
+      : names.length ? `${names[0]} and a host the show writes` : state.hosts.length === 1 ? "One host, written by the show" : "Two hosts, written by the show";
+    const n = collect().length;
+    const src = [n ? `${n.toLocaleString()} characters to go on` : "Waiting for something to talk about",
+      state.research ? "can look things up" : ""].filter(Boolean).join(" · ");
+    const key = [title, accent, label, who, state.minutes, src].join("|");
     if (key === previewKey) return;
     previewKey = key;
     const box = $("[data-preview]");
-    if (!box.firstElementChild) {
-      setHtml(box, html`${sleeve({ title: "Your pod" }, "md")}<span class="pv-text"><strong></strong><span class="muted small"></span></span>`);
-    }
-    // Updated in place, so a new vibe's gel glides in (--gel is a registered color).
-    box.querySelector(".sleeve").style.setProperty("--gel", gelFor(p?.accent || "#2F6BD0"));
-    const art = coverUrl(title || "Your pod", p?.accent || "#2F6BD0");
-    if (art) box.querySelector(".sleeve").style.setProperty("--cover", `url(${art})`);
-    // A sleeve holds a few words, like a record's spine; the full title sits beside it.
-    box.querySelector(".sleeve-t").textContent = (title.split(/\s+/).slice(0, 3).join(" ").replace(/[,:;.!?…-]+$/, "")) || "Your pod";
-    box.querySelector("strong").textContent = title || "Your pod";
-    box.querySelector(".pv-text .muted").textContent = line[0] ? line[0].toUpperCase() + line.slice(1) : "";
+    applyAccent(box, accent);
+    setHtml(box, html`
+      ${material()}
+      <span class="intro-air"><i aria-hidden="true"></i>Your pod</span>
+      <div class="cstage-top">
+        <span class="cstage-cover" style="${coverStyle(title || "Your pod", accent)}" aria-hidden="true"></span>
+        <span class="col grow"><strong class="pstage-name">${title || "Your pod"}</strong>
+          <span class="pstage-facts">${[label, `${state.minutes} min`].filter(Boolean).join(" · ")}</span></span>
+      </div>
+      <div class="cstage-hosts">${state.hosts.map((h, i) => (h.name ? shape(h.name, 30)
+        : html`<span class="orb" style="--a:${session.hostColor(i).label};--b:${session.hostColor(i).avatar};--size:30px" aria-hidden="true"></span>`))}<span>${who}</span></div>
+      <p class="intro-music">${src}</p>`);
   };
 
   // ---- rendering ----------------------------------------------------------------------
@@ -209,12 +216,12 @@ export async function createView(root, { query }) {
   };
   const renderHosts = () => {
     setHtml($("[data-hosts]"), html`${state.hosts.map((h, i) => html`
-      <button type="button" class="host-card" data-host="${i}" aria-label="Edit host ${i + 1}">
-        <span class="avatar" style="--av:${session.hostColor(i).avatar};--size:36px">${h.name ? initial(h.name) : i + 1}</span>
-        <span class="col"><span class="strong">${h.name || "Auto name"}</span>
-          <span class="muted small">${h.persona || "The show writes a persona"}</span>
-          <span class="faint small">${[h.gender ? GENDER_LABEL[h.gender] : "", h.voice === "auto" ? "Auto voice" : `${h.voice} voice`].filter(Boolean).join(" · ")}
-            ${h.context ? html` · ${icon("lock", 11)} notes` : ""}</span></span>
+      <button type="button" class="ptile" data-host="${i}" aria-label="Cast host ${i + 1}${h.name ? `: ${h.name}` : ""}">
+        ${h.name ? shape(h.name, 38) : html`<span class="ptile-plus" aria-hidden="true">${icon("sparkle", 18)}</span>`}
+        <span class="ptile-text"><strong>${h.name || "The show decides"}</strong>
+          <span class="ptile-say">${h.persona || "A host written to fit the topic and the vibe."}</span>
+          <span class="ptile-facts">${[h.gender ? GENDER_LABEL[h.gender] : "", h.voice === "auto" ? "Voice picked to fit" : `${h.voice} voice`].filter(Boolean).join(" · ")}${h.context ? " · private notes" : ""}</span></span>
+        <span class="ptile-edit" aria-hidden="true">${icon("edit", 16)}</span>
       </button>`)}`);
     $("[data-host-count]").textContent = state.hosts.length === 2 ? "Switch to one host" : "Switch to two hosts";
     renderPreview();
@@ -331,6 +338,7 @@ export async function createView(root, { query }) {
       state.research = !state.research;
       renderResearch();
       renderCost();
+      renderPreview();
     } else if (t.closest("[data-host]")) {
       editHost(Number(t.closest("[data-host]").dataset.host));
     } else if (t.closest("[data-host-count]")) {
@@ -404,48 +412,13 @@ export async function createView(root, { query }) {
   // ---- hosts and personas -------------------------------------------------------------------
 
   function editHost(i) {
-    const h = state.hosts[i];
-    const presets = session.options.persona_presets || [];
-    const form = document.createElement("form");
-    form.className = "stack";
-    setHtml(form, html`
-      <p class="field-label">Cast a persona</p>
-      ${data.personas.length ? html`
-        <p class="faint small">Yours</p>
-        <div class="chips">${data.personas.map((p) => html`<button type="button" class="chip" data-persona="${p.id}">${p.name}</button>`)}</div>` : ""}
-      <p class="faint small">The cast</p>
-      <div class="chips">${presets.map((p) => html`<button type="button" class="chip" data-preset="${p.id}">${p.name}</button>`)}</div>
-      ${personaFields(h, { prefix: "host", required: false })}
-      <label class="check-row"><input type="checkbox" name="save"><span>Save to my personas</span></label>
-      <p class="error" role="alert" data-error></p>
-      <button class="btn white big block" type="submit">Done</button>`);
-    bindPersonaForm(form, "host");
-    const sheet = openSheet({ title: `Host ${i + 1}`, body: form });
-    form.addEventListener("click", (e) => {
-      const mine = data.personas.find((x) => x.id === e.target.closest("[data-persona]")?.dataset.persona);
-      const preset = session.personaPreset(e.target.closest("[data-preset]")?.dataset.preset);
-      if (mine || preset) fillPersona(form, mine || preset, "host");
-      if (e.target.closest("a[data-link]")) sheet.close();
-    });
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const next = hostOf(readPersona(form, "host"));
-      if (form.querySelector("input[name=save]").checked) {
-        if (!next.name || !next.persona) {
-          form.querySelector("[data-error]").textContent = "Give the persona a name and a personality to save it.";
-          return;
-        }
-        try {
-          data.personas.push(await api.create("personas", next));
-          toast(`${next.name} saved to your personas.`);
-        } catch (err) {
-          form.querySelector("[data-error]").textContent = err.message;
-          return;
-        }
-      }
-      state.hosts[i] = next;
-      renderHosts();
-      sheet.close();
+    openCastSheet({
+      title: state.hosts.length === 1 ? "Your host" : `Host ${i + 1}`, host: state.hosts[i], personas: data.personas,
+      allowAuto: true, allowSave: true,
+      onDone: (next) => {
+        state.hosts[i] = hostOf(next);
+        renderHosts();
+      },
     });
   }
 

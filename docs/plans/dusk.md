@@ -169,6 +169,15 @@ everything that's yours is tiles in three groups (Make something, Your sound, Pe
 numbers). Beside each other on a wide window; on a phone the stage leads and the ledger,
 account and Sign out come after the tiles.
 
+New pod and Co-host live (`views/create.js`, `views/cohost-setup.js`): what you're making
+stands on a stage beside the form (the pod's cover, title, vibe, hosts and what they have to
+go on; or you and your co-host, the mode and the topic), with Go live or Start the call under
+it. Hosts are tiles with their voice shapes, co-host modes are tiles, and both pages cast
+hosts through one sheet (`static/js/cast.js`, `openCastSheet`): the host on a stage with a
+voice sample, your personas and the cast as tiles, and the detailed fields folded under
+"Fine-tune them". `cast.js` also holds the stage, voice shape and sample player the Personas
+page uses.
+
 Panels that were a form in a white box (`.page .card`, apart from the topic box, the memo
 recorder and the credit card) are open sections on the page like New pod, and the saved
 cards (personas, styles, templates) are filled tiles rather than outlined ones.

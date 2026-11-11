@@ -5,7 +5,8 @@
 //             personality, what they know, private notes) with the same stage showing who
 //             you're making as you go.
 import { api } from "../api.js";
-import { material, waiting } from "../components.js";
+import { facts, onStage, shape, voicePlayer } from "../cast.js";
+import { waiting } from "../components.js";
 import { html, setHtml } from "../html.js";
 import { icon } from "../icons.js";
 import { bindPersonaForm, GENDER_LABEL, readPersona } from "../personas.js";
@@ -25,54 +26,6 @@ const TRAITS = [
   ["skills", "Skills", "Analogies, storytelling, gentle myth-busting"],
 ];
 const wide = () => matchMedia("(min-width: 1024px)").matches;
-const bits = (text) => String(text || "").split(",").map((s) => s.trim()).filter(Boolean);
-const facts = (p) => [p.gender ? GENDER_LABEL[p.gender] : "", p.voice && p.voice !== "auto" ? `${p.voice} voice` : "Voice picked to fit"].filter(Boolean).join(" · ");
-
-/** A host's voice shape in their own colour. */
-const shape = (name, size) => {
-  const c = callerColor(name || "?");
-  return html`<span class="orb" style="--a:color-mix(in oklch, ${c} 42%, #fff);--b:${c};--size:${size}px" aria-hidden="true"></span>`;
-};
-
-/** One sample at a time (static/voices/<Name>.mp3, recorded by tools/build_voice_samples.py).
- *  `changed` runs whenever what's playing changes, so the screen can show it. */
-function voicePlayer(changed) {
-  const audio = new Audio();
-  audio.preload = "none";
-  const player = {
-    playing: "",
-    stop() {
-      audio.pause();
-      if (player.playing) { player.playing = ""; changed(); }
-    },
-    /** Play this voice, or stop it if it's the one playing. */
-    toggle(voice) {
-      if (!voice || voice === "auto" || player.playing === voice) return player.stop();
-      player.playing = voice;
-      audio.src = `/static/voices/${encodeURIComponent(voice)}.mp3`;
-      audio.play().catch(() => { player.playing = ""; changed(); });
-      changed();
-    },
-    dispose() { audio.pause(); audio.removeAttribute("src"); player.playing = ""; },
-  };
-  audio.addEventListener("ended", () => { player.playing = ""; changed(); });
-  audio.addEventListener("error", () => { if (player.playing) { player.playing = ""; changed(); toast("Couldn't play that voice."); } });
-  return player;
-}
-
-/** What goes on the stage for a persona. `tag` is the little label at the top; `playing`
- *  is the voice being heard right now, if any. */
-const onStage = (p, tag, playing = "") => html`
-  ${material()}
-  <span class="intro-air"><i aria-hidden="true"></i>${tag}</span>
-  <div class="pstage-who">${shape(p.name, 64)}
-    <span class="col grow"><strong class="pstage-name">${p.name || "Unnamed host"}</strong><span class="pstage-facts">${facts(p)}</span></span>
-    ${p.voice && p.voice !== "auto" ? html`<button type="button" class="round-btn pstage-hear ${playing === p.voice ? "on" : ""}" data-hear="${p.voice}"
-      aria-label="${playing === p.voice ? "Stop" : `Hear the ${p.voice} voice`}">${icon(playing === p.voice ? "pause" : "play", 18)}</button>` : ""}</div>
-  <p class="pstage-say">${p.persona || "Who are they? Give them an attitude, a quirk, a way of talking."}</p>
-  ${bits(p.specialties).length || bits(p.likes).length ? html`<div class="pstage-chips">${bits(p.specialties).concat(bits(p.likes)).slice(0, 6).map((b) => html`<span>${b}</span>`)}</div>` : ""}
-  ${p.context ? html`<span class="pstage-notes">${icon("lock", 13)}Has private notes</span>` : ""}`;
-
 export async function personasView(root, { url }) {
   if (!session.signedIn) {
     navigate(loginPath("/personas"), { replace: true });
