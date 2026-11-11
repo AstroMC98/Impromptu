@@ -726,6 +726,54 @@
   }
   @media (min-width: 1280px) { .persona-form .vtile-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
+  /* ---- briefings: pick a template, see the briefing on a stage ---------------------------------------- */
+  .briefings .brief-lede { margin: 10px 0 0; max-width: 56ch; }
+  .brief-h-row { align-items: flex-end; gap: 12px; }
+  .brief-h-row .btn { margin-bottom: 4px; }
+  .btile-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .btile { border: 0; font: inherit; color: inherit; cursor: pointer; display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px 14px 14px;
+    border-radius: 22px; background: var(--bg-2); text-align: left; transition: background .2s ease, box-shadow .2s ease, transform var(--dur-snappy) var(--spring-snappy); }
+  .btile:hover { background: color-mix(in oklch, var(--bg-2) 84%, var(--fg) 6%); }
+  .btile:active { transform: scale(.985); }
+  .btile[aria-checked="true"] { background: var(--surface); box-shadow: inset 0 0 0 2px var(--fg), var(--shadow); }
+  .btile .style-swatch { width: 44px; height: 44px; border-radius: 14px; }
+  .btile-text { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .btile-text strong { display: flex; align-items: center; gap: 8px; font: 600 17px/1.15 var(--f-head); letter-spacing: -.02em; }
+  .btile-tag { padding: 3px 8px; border-radius: 999px; background: var(--fg); color: var(--bg); font: 800 10.5px/1 var(--f-ui, inherit); letter-spacing: .05em; text-transform: uppercase; }
+  .btile-say { font-size: 13.5px; line-height: 1.35; color: var(--fg-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .btile-facts { font-size: 12.5px; font-weight: 600; color: var(--fg-3, var(--fg-2)); }
+  .brief-pick-acts { margin-top: 4px; align-items: center; }
+  .bstage { gap: 14px; }
+  .bstage-who { gap: 4px; margin-top: 6px; }
+  .bstage-run { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .bstage-run li { display: flex; align-items: center; gap: 10px; font: 500 17px/1.2 var(--f-head); letter-spacing: -.02em; }
+  .bstage-run b { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .14);
+    font: 800 12px/1 var(--f-ui, inherit); font-variant-numeric: tabular-nums; }
+  .bstage .intro-music { margin-top: 4px; }
+  .briefings .intro-go { gap: 10px; }
+  .briefings .intro-go .watch-check { margin: 0; border-radius: 18px; padding: 12px 14px; }
+  .brief-note { text-align: center; }
+  /* on a phone, Make comes right after the choices; the watchlist and the schedule follow it */
+  .brief-form > section:nth-of-type(n+4) { order: 2; }
+  .brief-form .intro-go { order: 1; }
+  .brief-form .brief-sched { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: 24px; background: var(--bg-2); }
+  .brief-form .brief-sched .field { background: var(--surface); }
+  .brief-form .brief-sched .chip { background: var(--surface); }
+  .brief-form .brief-sched .chip[aria-pressed="true"] { background: var(--pri); }
+  .brief-form .card.watch-add { margin-bottom: 8px; }
+  .brief-row, .watch-row { background: var(--bg-2); box-shadow: none; border-radius: 22px; }
+  .brief-row { padding: 8px 8px 8px 12px; }
+  .watch-row { padding: 14px; }
+  .watch-ic { background: var(--surface); border-radius: 14px; }
+  .watch-ic::after { box-shadow: 0 0 0 2px var(--bg-2), 0 0 8px var(--amber); }
+  .watch-row.paused .watch-ic::after { box-shadow: 0 0 0 2px var(--bg-2); }
+  .watch-row .btn.chip-btn { background: var(--surface); }
+  .brief-cover { border-radius: 14px; }
+  .section-pick { background: var(--bg-2); box-shadow: none; border-radius: 16px; }
+  .section-pick[aria-pressed="true"] { background: var(--surface); box-shadow: inset 0 0 0 2px var(--fg); }
+  @media (min-width: 600px) { .btile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1024px) { .briefings .bstage { min-height: 340px; } }
+
   /* ---- panels that were forms in a box: open sections on the page, like New pod ----------------------- */
   .page .card:not(.about-box, .recorder, .credit-card, .accent) { background: none; box-shadow: none; padding: 0; border-radius: 0; gap: 12px; }
   .page .card:not(.about-box, .recorder, .credit-card, .accent) + .card,
@@ -770,7 +818,7 @@
       main .shelf, main .intro-sec, main .mem-group, main .mem-block, main .create-h2, main .page > .card {
         animation: settle linear both; animation-timeline: view(block); animation-range: entry 0px entry 160px; }
       main .saved-card, main .pod-grid > li, main .lib-list > li, main .mem-row, main .nb-page, main .open-tile, main .mtile,
-      main .radio-card, main .ledger > li, main .menu-item, main .people > li, main .ptile, main .vtile {
+      main .radio-card, main .ledger > li, main .menu-item, main .people > li, main .ptile, main .vtile, main .btile, main .brief-row, main .watch-row {
         animation: settle-row linear both; animation-timeline: view(block); animation-range: entry 0px entry 110px; }
       /* a shelf: cards come up to size as they slide in, and the edge with more behind it fades */
       .tpl-row > *, .shelf-row > *, .kept-row > *, .chapter-cards > * {

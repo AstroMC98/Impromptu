@@ -4,7 +4,7 @@
 // you can hear them; they're never listed with your pods and are deleted after 48 h.
 import { api } from "../api.js";
 import { unlockAudio } from "../audio/context.js";
-import { searchSuggestions, waiting } from "../components.js";
+import { material, searchSuggestions, waiting } from "../components.js";
 import { html, setHtml } from "../html.js";
 import { icon } from "../icons.js";
 import { navigate } from "../router.js";
@@ -48,26 +48,42 @@ export async function briefingsView(root) {
   el.className = "page-wrap";
   setHtml(el, html`
     ${appHeader({ search: false })}
-    <main class="page wide briefings">
-      <div class="page-title row">
-        <div class="col grow"><h1>Briefings</h1>
-          <p class="muted">A private pod made just for you, from the sites you monitor, the links you watch, the
-            searches you follow and the topics you care about. Make one whenever you like, or have one ready every morning. Only you can hear
-            them, and they're deleted after two days.</p></div>
+    <main class="page wide intro-page briefings">
+      <div class="page-title"><div class="col">
+        <h1 class="two">Your briefing.<span class="ask">Made just for you.</span></h1>
+        <p class="muted brief-lede">A private pod from the sites you monitor, the links you watch and the topics you care about.
+          Only you can hear it, and it's deleted after two days.</p>
+      </div></div>
+      <div class="intro-form brief-form">
+        <section class="intro-sec" data-list-sec hidden aria-labelledby="bl-h">
+          <h2 id="bl-h" class="create-h2 first">Ready for you</h2>
+          <div data-list></div>
+        </section>
+        <section class="intro-sec" aria-labelledby="bt-h">
+          <div class="row brief-h-row"><h2 id="bt-h" class="create-h2 grow">Pick a template</h2>
+            <button class="btn quiet small-btn" type="button" data-new-template>${icon("plus", 14, 2.6)}New template</button></div>
+          <div class="btile-grid" role="radiogroup" aria-label="Template" data-pick></div>
+          <div class="row gap wrap brief-pick-acts" data-pick-acts></div>
+        </section>
+        <section class="intro-sec" aria-labelledby="bn-h">
+          <h2 id="bn-h" class="create-h2">How long</h2>
+          <div data-length></div>
+        </section>
+        <section class="intro-sec" aria-labelledby="bw-h">
+          <h2 id="bw-h" class="create-h2">Your watchlist</h2>
+          <p class="muted small">Sites to monitor for new posts, links to watch for changes (a pricing page, a status page, an
+            agenda), and searches to follow in the news. Each briefing reports what's new since the last one.</p>
+          <div data-watch></div>
+        </section>
+        <section class="intro-sec" aria-labelledby="bs-h">
+          <h2 id="bs-h" class="create-h2">Every morning</h2>
+          <div class="brief-sched" data-schedule></div>
+        </section>
+        <aside class="intro-side" aria-label="The briefing you'll get">
+          <div class="intro-stage stage bstage" data-stage>${material()}</div>
+          <div class="intro-go" data-make>${waiting()}</div>
+        </aside>
       </div>
-      <div class="brief-grid">
-        <section class="card brief-make" data-make aria-label="Make a briefing">${waiting()}</section>
-        <section class="card brief-sched" data-schedule aria-label="Every morning"></section>
-      </div>
-      <h2 class="section-h">Your briefings</h2>
-      <div data-list></div>
-      <h2 class="section-h">Watchlist</h2>
-      <p class="muted small brief-lede">Sites to monitor for new posts, links to watch for changes (a pricing page, a
-        status page, an agenda), and searches to follow in the news. Each briefing reports what's new since the last one.</p>
-      <div data-watch></div>
-      <div class="row section-h-row"><h2 class="section-h grow">Templates</h2>
-        <button class="btn chip-btn small-btn" type="button" data-new-template>${icon("plus", 14, 2.6)}New template</button></div>
-      <div data-templates></div>
     </main>`);
   root.append(el);
   const offHead = bindHeader(el);
@@ -98,23 +114,40 @@ export async function briefingsView(root) {
     st.pick.template = t.id;
     st.pick.minutes = st.pick.minutes || t.minutes || 5;
     const cost = creditsFor(st.pick.minutes, d.minutes_per_credit);
-    setHtml(el.querySelector("[data-make]"), html`
-      <div class="card-head"><h2>Make one now</h2>
-        <span class="faint small">${plural(session.credits, "credit")}</span></div>
-      <label class="field-label" for="mk-template">Template</label>
-      <select id="mk-template" class="field">${templateOptions(t.id)}</select>
-      <p class="faint small">${t.blurb || sectionsLine(t)}</p>
-      <p class="field-label">Length</p>
-      ${lengthChips(st.pick.minutes, "data-mk-len")}
-      <p class="muted small">${d.watches
+    const mine = new Set(d.templates.map((x) => x.id));
+    const tile = (x) => html`
+      <button type="button" role="radio" class="btile" data-pick-template="${x.id}" aria-checked="${x.id === t.id ? "true" : "false"}">
+        <span class="style-swatch" style="--tile:${x.accent || ACCENT}" aria-hidden="true"></span>
+        <span class="btile-text"><strong>${x.name}${mine.has(x.id) ? html`<span class="btile-tag">Yours</span>` : ""}</strong>
+          <span class="btile-say">${x.blurb || sectionsLine(x)}</span>
+          <span class="btile-facts">${x.hosts.map((h) => h.name).join(" & ")} · ${x.minutes} min</span></span>
+      </button>`;
+    setHtml(el.querySelector("[data-pick]"), html`${d.templates.map(tile)}${d.premade.map(tile)}`);
+    setHtml(el.querySelector("[data-pick-acts]"), mine.has(t.id) ? html`
+      <button class="btn quiet small-btn" type="button" data-edit-template="${t.id}">${icon("edit", 14)}Edit ${t.name}</button>
+      <button class="btn link danger-text" type="button" data-del-template="${t.id}">Delete it</button>`
+      : html`<button class="btn quiet small-btn" type="button" data-copy-template="${t.id}">${icon("edit", 14)}Make ${t.name} your own</button>`);
+    setHtml(el.querySelector("[data-length]"), lengthChips(st.pick.minutes, "data-mk-len"));
+    const stage = el.querySelector("[data-stage]");
+    applyAccent(stage, t.accent || ACCENT);
+    const run = (t.sections || []).map((s) => (s === "custom" ? t.custom_title || "Your segment" : SECTION_LABEL[s]));
+    setHtml(stage, html`
+      ${material()}
+      <span class="intro-air"><i aria-hidden="true"></i>Your briefing</span>
+      <div class="col bstage-who"><strong class="pstage-name">${t.name}</strong>
+        <span class="pstage-facts">${t.hosts.map((h) => h.name).join(" & ")} · ${st.pick.minutes} min</span></div>
+      <ol class="bstage-run">${run.map((label, i) => html`<li><b>${i + 1}</b>${label}</li>`)}</ol>
+      <p class="intro-music">${d.watches
         ? `${plural(d.waiting, "update")} waiting from ${d.watches === 1 ? "1 watched site or link" : `${d.watches} watched sites and links`}.`
-        : "Your watchlist is empty, so this one is all about your topics. Add sites and links below."}</p>
+        : "Your watchlist is empty, so this one is all about your topics."}</p>`);
+    setHtml(el.querySelector("[data-make]"), html`
       <div class="watch-check" data-check role="status" aria-live="polite" ${st.busy && st.watches.length ? "" : "hidden"}></div>
       <p class="error" role="alert" data-make-error></p>
       <button class="btn white big block" type="button" data-make-go ${st.busy ? "disabled" : ""}>
         ${st.busy ? html`<span class="lamp chase" aria-hidden="true"></span>${st.watches.length ? "Checking your watchlist…" : "Getting it ready…"}`
           : html`${icon("play", 18, 2.4)}Make my briefing · ${plural(cost, "credit")}`}</button>
-      <p class="faint small">It goes live as it's made, so you can cut in with a question any time.</p>`);
+      <p class="faint small brief-note">It goes live as it's made, so you can cut in with a question any time.
+        You have ${plural(session.credits, "credit")}.</p>`);
     renderCheck();
   };
 
@@ -202,7 +235,8 @@ export async function briefingsView(root) {
         <button class="icon-btn small" type="button" data-del-briefing="${b.id}" aria-label="Delete ${b.title}">${icon("trash", 18)}</button>
         ${searched.length ? html`<div class="brief-searches"><span class="faint small">Searched with Google</span>
           ${searched.map((m) => suggestions(m))}</div>` : ""}</li>`;
-    })}</ul>` : html`<p class="empty">No briefings yet. Make one above, or set a time and one will be waiting for you.</p>`);
+    })}</ul>` : "");
+    el.querySelector("[data-list-sec]").hidden = !list.length;
   };
 
   // ---- the watchlist ----------------------------------------------------------------------------
@@ -259,22 +293,7 @@ export async function briefingsView(root) {
   // ---- templates -----------------------------------------------------------------------------------
 
   const sectionsLine = (t) => (t.sections || []).map((s) => (s === "custom" ? t.custom_title || "Your segment" : SECTION_LABEL[s])).join(" · ");
-  const templateCard = (t, mine) => html`
-    <div class="saved-card ${mine ? "" : "preset"} brief-template">
-      <span class="style-swatch" style="--tile:${t.accent || ACCENT}" aria-hidden="true"></span>
-      <span class="col grow"><strong>${t.name}</strong>
-        <span class="muted small">${t.blurb || sectionsLine(t)}</span>
-        <span class="faint small">${t.hosts.map((h) => h.name).join(" & ")} · ${t.minutes} min · ${sectionsLine(t)}</span></span>
-      <span class="row saved-actions">${mine ? html`
-        <button class="icon-btn small" type="button" data-edit-template="${t.id}" aria-label="Edit ${t.name}">${icon("edit", 18)}</button>
-        <button class="icon-btn small" type="button" data-del-template="${t.id}" aria-label="Delete ${t.name}">${icon("trash", 18)}</button>`
-        : html`<button class="btn chip-btn small-btn" type="button" data-copy-template="${t.id}">Customize</button>`}</span>
-    </div>`;
-
-  const renderTemplates = () => setHtml(el.querySelector("[data-templates]"), html`
-    ${st.data.templates.length ? html`<div class="saved-grid">${st.data.templates.map((t) => templateCard(t, true))}</div>
-      <p class="field-label premade-h">Premade</p>` : ""}
-    <div class="saved-grid">${st.data.premade.map((t) => templateCard(t, false))}</div>`);
+  const renderTemplates = () => {};      // the templates are the picker at the top now (renderMake)
 
   const renderAll = () => {
     renderMake();
@@ -361,7 +380,12 @@ export async function briefingsView(root) {
     const lenSc = t.closest("[data-sc-len]");
     const day = t.closest("[data-day]");
     const mode = t.closest("[data-watch-mode]");
-    if (lenMk) {
+    const pickT = t.closest("[data-pick-template]");
+    if (pickT) {
+      st.pick = { template: pickT.dataset.pickTemplate, minutes: templateById(pickT.dataset.pickTemplate)?.minutes || 5 };
+      renderMake();
+      el.querySelector(`[data-pick-template="${CSS.escape(st.pick.template)}"]`)?.focus({ preventScroll: true });
+    } else if (lenMk) {
       st.pick.minutes = Number(lenMk.dataset.mkLen);
       renderMake();
     } else if (lenSc) {
@@ -430,6 +454,7 @@ export async function briefingsView(root) {
       if (!(await confirmSheet({ title: `Delete ${tpl.name}?`, message: "Briefings already made with it stay.", confirm: "Delete", danger: true }))) return;
       await api.deleteBriefingTemplate(tpl.id).catch((err) => toast(err.message));
       st.data.templates = st.data.templates.filter((x) => x.id !== tpl.id);
+      if (st.pick.template === tpl.id) st.pick = { template: "", minutes: 0 };
       renderAll();
     }
   });

@@ -156,6 +156,13 @@ The host editor on New pod and the Styles page still use the shared fields in a 
 Tapping a voice tile picks it and plays its sample, and the stage has a play button;
 the samples are `static/voices/<Name>.mp3`, recorded once by `tools/build_voice_samples.py`.
 
+Briefings (`static/js/views/briefings.js`) too: templates are tiles you pick from (yours
+first, tagged), with Edit, Delete or "Make it your own" for the one picked; the stage shows
+the briefing you'll get (name, hosts, length, its run of segments, what's waiting on your
+watchlist) with Make under it. The watchlist and the morning schedule follow as sections;
+"Ready for you" appears at the top only when there are briefings. On a phone, Make sits
+right after the length. The template editor is still a sheet.
+
 Panels that were a form in a white box (`.page .card`, apart from the topic box, the memo
 recorder and the credit card) are open sections on the page like New pod, and the saved
 cards (personas, styles, templates) are filled tiles rather than outlined ones.
