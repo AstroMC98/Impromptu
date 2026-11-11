@@ -10,7 +10,7 @@ import { icon } from "../icons.js";
 import { navigate } from "../router.js";
 import { loginPath, session } from "../session.js";
 import { applyAccent } from "../theme.js";
-import { confirmSheet, openSheet } from "../ui.js";
+import { confirmSheet } from "../ui.js";
 import { fmtAgo, fmtTime, toast } from "../util.js";
 import { appHeader, bindHeader } from "./library.js";
 
@@ -323,9 +323,10 @@ export async function briefingsView(root) {
     setHtml(el.querySelector("[data-make]"), html`<p class="error">${err.message}</p>`);
     return { unmount() { offHead(); } };
   }
+  // Back from the template page with one just saved: it's the one picked.
+  const want = new URLSearchParams(location.search).get("pick");
+  if (want && templateById(want)) st.pick = { template: want, minutes: templateById(want).minutes || 5 };
   renderAll();
-  Promise.all([api.list("personas"), api.list("styles")])
-    .then(([p, s]) => { st.personas = p.items; st.styles = s.items; }).catch(() => {});
 
   // While something is being made or is on air, keep the list fresh.
   const timer = setInterval(async () => {
@@ -443,12 +444,11 @@ export async function briefingsView(root) {
       renderWatch();
       renderMake();
     } else if (t.closest("[data-new-template]")) {
-      await editTemplate(null);
+      navigate("/briefings/template");
     } else if (t.closest("[data-copy-template]")) {
-      const src = templateById(t.closest("[data-copy-template]").dataset.copyTemplate);
-      await editTemplate({ ...src, id: undefined, name: `${src.name} (mine)`.slice(0, 40), premade: undefined });
+      navigate(`/briefings/template?from=${encodeURIComponent(t.closest("[data-copy-template]").dataset.copyTemplate)}`);
     } else if (t.closest("[data-edit-template]")) {
-      await editTemplate(templateById(t.closest("[data-edit-template]").dataset.editTemplate));
+      navigate(`/briefings/template?id=${encodeURIComponent(t.closest("[data-edit-template]").dataset.editTemplate)}`);
     } else if (t.closest("[data-del-template]")) {
       const tpl = templateById(t.closest("[data-del-template]").dataset.delTemplate);
       if (!(await confirmSheet({ title: `Delete ${tpl.name}?`, message: "Briefings already made with it stay.", confirm: "Delete", danger: true }))) return;
@@ -502,137 +502,6 @@ export async function briefingsView(root) {
       if (slot) slot.textContent = ex.message;
       else toast(ex.message);
     }
-  }
-
-  // ---- the template editor ---------------------------------------------------------------------------
-
-  function editTemplate(tpl) {
-    const editing = Boolean(tpl?.id);
-    const t = tpl || { name: "", hosts: [], sections: ["watchlist", "deep_dive"], minutes: 5, topics: "", style: "" };
-    const presets = session.options.presets || [];
-    const personaOpts = (selected, i) => html`
-      ${t.hosts[i] ? html`<option value="keep:${i}" ${selected === `keep:${i}` ? "selected" : ""}>${t.hosts[i].name} (as is)</option>` : ""}
-      ${st.personas.length ? html`<optgroup label="Your personas">${st.personas.map((p) => html`
-        <option value="p:${p.id}" ${selected === `p:${p.id}` ? "selected" : ""}>${p.name}</option>`)}</optgroup>` : ""}
-      <optgroup label="The cast">${(session.options.persona_presets || []).map((p) => html`
-        <option value="x:${p.id}" ${selected === `x:${p.id}` ? "selected" : ""}>${p.name}</option>`)}</optgroup>`;
-    const presetMatch = presets.find((p) => p.id === t.vibe || p.prompt === t.style);
-    const styleInit = presetMatch ? `v:${presetMatch.id}` : t.style ? "custom" : `v:${presets[0]?.id}`;
-    const firstPreset = (session.options.persona_presets || [])[0];
-    const host1 = t.hosts[0] ? "keep:0" : st.personas[0] ? `p:${st.personas[0].id}` : `x:${firstPreset?.id}`;
-    const host2 = t.hosts[1] ? "keep:1" : "";
-
-    return new Promise((resolve) => {
-      const form = document.createElement("form");
-      form.className = "stack template-form";
-      let sections = [...t.sections];
-      let minutes = t.minutes || 5;
-      const draw = (keep = {}) => setHtml(form, html`
-        <label class="field-label" for="bt-name">Name</label>
-        <input id="bt-name" class="field" maxlength="40" required value="${keep.name ?? t.name}" placeholder="My commute">
-        <div class="field-pair">
-          <span class="col"><label class="field-label" for="bt-h1">Host</label>
-            <select id="bt-h1" class="field">${personaOpts(keep.h1 ?? host1, 0)}</select></span>
-          <span class="col"><label class="field-label" for="bt-h2">Second host</label>
-            <select id="bt-h2" class="field"><option value="">Just one host</option>${personaOpts(keep.h2 ?? host2, 1)}</select></span>
-        </div>
-        <label class="field-label" for="bt-style">Style</label>
-        <select id="bt-style" class="field">
-          <optgroup label="Presets">${presets.map((p) => html`<option value="v:${p.id}" ${(keep.style ?? styleInit) === `v:${p.id}` ? "selected" : ""}>${p.label}</option>`)}</optgroup>
-          ${st.styles.length ? html`<optgroup label="Your styles">${st.styles.map((s) => html`
-            <option value="s:${s.id}" ${(keep.style ?? styleInit) === `s:${s.id}` ? "selected" : ""}>${s.name}</option>`)}</optgroup>` : ""}
-          <option value="custom" ${(keep.style ?? styleInit) === "custom" ? "selected" : ""}>Describe it yourself…</option>
-        </select>
-        ${(keep.style ?? styleInit) === "custom" ? html`
-          <textarea id="bt-style-text" class="field area short" maxlength="2000" required placeholder="Calm and clear, like a friend reading you the news over coffee.">${keep.styleText ?? t.style ?? ""}</textarea>` : ""}
-        <label class="field-label" for="bt-topics">Topics you care about</label>
-        <textarea id="bt-topics" class="field area short" maxlength="1000" placeholder="Trail running, Spanish, the Seattle food scene, climate tech">${keep.topics ?? t.topics ?? ""}</textarea>
-        <p class="field-label">What's in it</p>
-        <div class="section-picks">${SECTIONS.map(([id, label, desc]) => html`
-          <button type="button" class="section-pick" data-section="${id}" aria-pressed="${sections.includes(id)}">
-            <span class="pick-check" aria-hidden="true">${sections.includes(id) ? icon("check", 16, 3) : icon("plus", 16, 2.6)}</span>
-            <span class="col"><strong>${label}</strong><span class="faint small">${desc}</span></span></button>`)}</div>
-        ${sections.includes("custom") ? html`
-          <label class="field-label" for="bt-ctitle">Your segment's title</label>
-          <input id="bt-ctitle" class="field" maxlength="60" required value="${keep.ctitle ?? t.custom_title ?? ""}" placeholder="Spanish word of the day">
-          <label class="field-label" for="bt-cnotes">What it covers</label>
-          <textarea id="bt-cnotes" class="field area short" maxlength="600" placeholder="One useful word, used in a sentence about running.">${keep.cnotes ?? t.custom_notes ?? ""}</textarea>` : ""}
-        <p class="field-label">Usual length</p>
-        <div class="chips" role="group" aria-label="Usual length">${st.data.lengths.map((m) => html`
-          <button type="button" class="chip" data-bt-len="${m}" aria-pressed="${m === minutes}">${m} min</button>`)}</div>
-        <p class="error" role="alert" data-error></p>
-        <button class="btn white big block" type="submit">${editing ? "Save" : "Save template"}</button>`);
-      const snapshot = () => ({
-        name: form.querySelector("#bt-name").value, h1: form.querySelector("#bt-h1").value,
-        h2: form.querySelector("#bt-h2").value, style: form.querySelector("#bt-style").value,
-        styleText: form.querySelector("#bt-style-text")?.value, topics: form.querySelector("#bt-topics").value,
-        ctitle: form.querySelector("#bt-ctitle")?.value, cnotes: form.querySelector("#bt-cnotes")?.value,
-      });
-      draw();
-      form.addEventListener("change", (e) => {
-        if (e.target.id === "bt-style") draw(snapshot());
-      });
-      form.addEventListener("click", (e) => {
-        const pick = e.target.closest("[data-section]");
-        const len = e.target.closest("[data-bt-len]");
-        if (pick) {
-          const id = pick.dataset.section;
-          const keep = snapshot();
-          sections = sections.includes(id) ? sections.filter((s) => s !== id) : SECTIONS.map(([s]) => s).filter((s) => s === id || sections.includes(s));
-          draw(keep);
-        } else if (len) {
-          const keep = snapshot();
-          minutes = Number(len.dataset.btLen);
-          draw(keep);
-        }
-      });
-
-      const hostFrom = (value) => {
-        if (!value) return null;
-        const [kind, ref] = [value.slice(0, value.indexOf(":")), value.slice(value.indexOf(":") + 1)];
-        const p = kind === "keep" ? t.hosts[Number(ref)] : kind === "p" ? st.personas.find((x) => x.id === ref)
-          : session.personaPreset(ref);
-        if (!p) return null;
-        const { name, voice = "auto", gender = "", persona = "", likes = "", specialties = "", skills = "", context = "" } = p;
-        return { name, voice, gender, persona, likes, specialties, skills, context };
-      };
-
-      let saved = null;
-      const sheet = openSheet({ title: editing ? `Edit ${t.name}` : "New briefing template", body: form, onClose: () => resolve(saved) });
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const v = snapshot();
-        const hosts = [hostFrom(v.h1), hostFrom(v.h2)].filter(Boolean);
-        let style;
-        if (v.style.startsWith("v:")) {
-          const p = presets.find((x) => x.id === v.style.slice(2));
-          style = { style: p.prompt, vibe: p.id, style_label: p.label, accent: p.accent };
-        } else if (v.style.startsWith("s:")) {
-          const s = st.styles.find((x) => x.id === v.style.slice(2));
-          style = { style: s.prompt, vibe: null, style_label: s.name, accent: s.accent };
-        } else {
-          style = { style: (v.styleText || "").trim(), vibe: null, style_label: null, accent: t.accent || ACCENT };
-        }
-        const body = {
-          name: v.name.trim(), blurb: editing ? t.blurb || "" : "", hosts, ...style, minutes, topics: v.topics.trim(),
-          sections, custom_title: (v.ctitle || "").trim(), custom_notes: (v.cnotes || "").trim(),
-        };
-        if (!sections.length) {
-          form.querySelector("[data-error]").textContent = "Pick at least one thing for it to cover.";
-          return;
-        }
-        try {
-          saved = editing ? await api.updateBriefingTemplate(t.id, body) : await api.createBriefingTemplate(body);
-          st.data.templates = editing ? st.data.templates.map((x) => (x.id === saved.id ? saved : x)) : [...st.data.templates, saved];
-          if (!editing) st.pick = { template: saved.id, minutes: saved.minutes };
-          renderAll();
-          sheet.close();
-          toast(editing ? "Template saved." : `${saved.name} is ready to use.`);
-        } catch (ex) {
-          form.querySelector("[data-error]").textContent = ex.message;
-        }
-      });
-    });
   }
 
   return { unmount() { offHead(); clearInterval(timer); } };

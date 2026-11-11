@@ -190,6 +190,18 @@ else in four tabs beside it (under it on a phone): Kept, Listener notes, Noteboo
 (the three switches). A caller memory shows the question on its own with who asked it as a
 label (`shown()`); the stored sentence is unchanged and is what the edit sheet opens.
 
+The smaller pages follow suit. Connections: people as tiles, your invite link on a stage with
+"add by email" under it. Stats: the numbers on a stage (all your pods, or one pod with its
+cover), pods and charts beside it. Albums: filled tiles; an album's own page opens on a stage
+in its colour; making or editing one is a page (`/albums?edit=new`, `?edit=<id>`). Admin:
+people as tiles, and the one you pick on a stage with the grant form (a sheet on a phone).
+The briefing template editor is a page too (`views/briefing-template.js`,
+`/briefings/template`, `?id=` or `?from=`), casting hosts through the shared sheet; saving
+returns to Briefings with it picked (`?pick=`).
+
+Memory also keeps what a host said about themselves (scope `self`): up to two per call are
+proposed with the rest, and once kept they are handed back to that host as "You said: …".
+
 Panels that were a form in a white box (`.page .card`, apart from the topic box, the memo
 recorder and the credit card) are open sections on the page like New pod, and the saved
 cards (personas, styles, templates) are filled tiles rather than outlined ones.

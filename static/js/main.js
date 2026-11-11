@@ -6,6 +6,7 @@ import { start } from "./router.js";
 import { session } from "./session.js";
 import { adminView } from "./views/admin.js";
 import { albumsView, albumView } from "./views/albums.js";
+import { briefingTemplateView } from "./views/briefing-template.js";
 import { briefingsView } from "./views/briefings.js";
 import { cohostCallView } from "./views/cohost-call.js";
 import { cohostSetupView } from "./views/cohost-setup.js";
@@ -53,6 +54,7 @@ async function boot() {
     [/^\/you$/, youView],
     [/^\/albums$/, albumsView],
     [/^\/briefings$/, briefingsView],
+    [/^\/briefings\/template$/, briefingTemplateView],
     [/^\/album\/([\w-]+)$/, albumView],
     [/^\/creator\/([\w-]+)$/, creatorView],
     [/^\/stats$/, statsView],

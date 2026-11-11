@@ -969,6 +969,12 @@
   .pstage .pstage-facts { display: inline-flex; align-items: center; gap: 5px; }
   .pick-row { border-radius: 16px; }
 
+  /* ---- the briefing template page ---------------------------------------------------------------------- */
+  .host-slot { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .host-slot .btn.link { align-self: flex-end; height: 30px; }
+  .intro-page .vibes + .pill-field { margin-top: 10px; }
+  .intro-page .section-picks + [data-custom]:not(:empty) { margin-top: 6px; }
+
   /* ---- panels that were forms in a box: open sections on the page, like New pod ----------------------- */
   .page .card:not(.about-box, .recorder, .credit-card, .accent) { background: none; box-shadow: none; padding: 0; border-radius: 0; gap: 12px; }
   .page .card:not(.about-box, .recorder, .credit-card, .accent) + .card,
