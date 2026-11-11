@@ -2,7 +2,8 @@
 // long, when people left, replays, and who listened. Names are shown for signed-in
 // listeners only, and only to the pod's creator; anonymous listeners are counted.
 import { api } from "../api.js";
-import { waiting } from "../components.js";
+import { material, waiting } from "../components.js";
+import { coverStyle } from "../cover.js";
 import { html, raw, setHtml } from "../html.js";
 import { icon } from "../icons.js";
 import { navigate } from "../router.js";
@@ -20,9 +21,9 @@ function duration(sec) {
   return h ? `${h}h ${m}m` : `${m}m ${String(sec % 60).padStart(2, "0")}s`;
 }
 
-function tile(label, value, sub = "") {
-  return html`<div class="stat-tile"><span class="stat-num">${value}</span><span class="stat-label">${label}</span>
-    ${sub ? html`<span class="faint small">${sub}</span>` : ""}</div>`;
+/** A number on the stage: the figure, what it counts, and a quiet line under it. */
+function num(label, value, sub = "") {
+  return html`<div class="snum"><strong>${value}</strong><span>${label}</span>${sub ? html`<i>${sub}</i>` : ""}</div>`;
 }
 
 /** Listening over time: a stepped area chart of [seconds into the show, listeners]. */
@@ -68,7 +69,7 @@ function personRow(p) {
   const live = p.live, rep = p.replay;
   const liveText = live ? `${fmtTime(live.join_pos || 0)} to ${live.to_end ? "the end" : fmtTime(live.leave_pos || 0)}, ${duration(live.listened_s)} heard` : "";
   const repText = rep ? `replay: ${duration(rep.listened_s)}${rep.completed ? ", finished it" : rep.leave_pos ? `, got to ${fmtTime(rep.leave_pos)}` : ""}` : "";
-  return html`<li class="person">
+  return html`<li class="person ctile">
     <span class="avatar" style="--av:${callerColor(p.name)};--size:34px">${initial(p.name)}</span>
     <span class="col grow"><strong>${p.name}</strong>
       <span class="muted small">${[live ? `Live ${liveText}` : "", repText].filter(Boolean).join(" · ")}</span></span>
@@ -86,7 +87,7 @@ export async function showStatsView(root, { params: [showId] }) {
   const el = document.createElement("div");
   el.className = "page-wrap";
   root.append(el);
-  setHtml(el, html`${appHeader({ search: false })}<main class="page wide" data-body>${waiting()}</main>`);
+  setHtml(el, html`${appHeader({ search: false })}<main class="page wide you stats-page" data-body>${waiting()}</main>`);
   const offHead = bindHeader(el);
   let timer = 0;
 
@@ -95,29 +96,42 @@ export async function showStatsView(root, { params: [showId] }) {
     applyAccent(document.documentElement, show.accent || "#B8336A");
     const L = st.live, R = st.replays;
     setHtml(el.querySelector("[data-body]"), html`
-      <a class="back-link" href="/show/${show.id}" data-link>${icon("chevronLeft", 18, 2.4)}Back to the pod</a>
-      <div class="page-title row">
-        <div class="col grow"><h1>${show.title || "Untitled pod"}</h1>
-          <p class="muted">${live ? html`<span class="badge live small"><span class="dot"></span>Live</span> ${L.now} listening now · updates every few seconds`
-            : `Stats · ${fmtAgo(show.created_at)}${st.duration_s ? ` · ${fmtTime(st.duration_s)} long` : ""}`}</p></div>
-      </div>
-      <div class="stat-grid">
-        ${tile("Listeners", L.unique, `${L.signed_in} signed in, ${L.anonymous} anonymous`)}
-        ${tile("Peak at once", L.peak)}
-        ${tile("Average listen", duration(L.avg_listen_s), `${duration(L.listened_s)} in all`)}
-        ${tile("Stayed to the end", L.stayed_to_end)}
-        ${tile("Replays", R.plays, R.plays ? `${Math.round(R.avg_completion * 100)}% average, ${R.completed} finished` : "")}
-        ${tile("Call-ins", st.engagement.comments)}
-        ${tile("Reactions", st.engagement.hearts)}
-        ${tile("Your subscribers", st.engagement.subscribers)}
-      </div>
-      <section class="card"><h2 class="card-h">Listening over the show</h2>${timelineChart(L.timeline, st.duration_s)}</section>
-      <section class="card"><h2 class="card-h">When people left <span class="faint">live listeners who dropped off, by minute</span></h2>
-        ${dropoffChart(L.dropoff, st.duration_s || (L.timeline.at(-1)?.[0] ?? 0))}</section>
-      <section class="card"><h2 class="card-h">Who listened <span class="faint">signed-in listeners; only you can see this</span></h2>
-        ${st.people.length ? html`<ul class="people">${st.people.map(personRow)}</ul>` : html`<p class="empty">No signed-in listeners yet.</p>`}
-        ${st.anonymous ? html`<p class="faint small">Plus ${st.anonymous} anonymous ${st.anonymous === 1 ? "listener" : "listeners"}: counted, never named.</p>` : ""}
-      </section>`);
+      <a class="btn link back-link" href="/show/${show.id}" data-link>${icon("chevronLeft", 16)}Back to the pod</a>
+      <div class="page-title"><div class="col">
+        <h1 class="two">${show.title || "Untitled pod"}<span class="ask">Who listened, and for how long.</span></h1>
+      </div></div>
+      <div class="you-body">
+        <div class="you-lists">
+          <section class="intro-sec"><h2 class="create-h2 first">Listening over the show</h2>
+            <div class="stat-panel">${timelineChart(L.timeline, st.duration_s)}</div></section>
+          <section class="intro-sec"><h2 class="create-h2">When people left <span class="faint">by minute</span></h2>
+            <div class="stat-panel">${dropoffChart(L.dropoff, st.duration_s || (L.timeline.at(-1)?.[0] ?? 0))}</div></section>
+          <section class="intro-sec"><h2 class="create-h2">Who listened <span class="faint">only you can see this</span></h2>
+            ${st.people.length ? html`<ul class="people">${st.people.map(personRow)}</ul>` : html`<div class="mem-none">No signed-in listeners yet.</div>`}
+            ${st.anonymous ? html`<p class="faint small">Plus ${st.anonymous} anonymous ${st.anonymous === 1 ? "listener" : "listeners"}: counted, never named.</p>` : ""}
+          </section>
+        </div>
+        <aside class="you-side" aria-label="The numbers">
+          <div class="intro-stage stage ystage sstage" data-stage>
+            ${material()}
+            <span class="intro-air"><i aria-hidden="true"></i>${live ? `Live · ${L.now} listening now` : `${fmtAgo(show.created_at)}${st.duration_s ? ` · ${fmtTime(st.duration_s)} long` : ""}`}</span>
+            <div class="cstage-top">
+              <span class="cstage-cover" style="${coverStyle(show.title || "Untitled pod", show.accent || "#B8336A")}" aria-hidden="true"></span>
+              <span class="col"><strong class="credit-num">${L.unique}</strong><span class="pstage-facts">listener${L.unique === 1 ? "" : "s"} · ${L.signed_in} signed in, ${L.anonymous} anonymous</span></span>
+            </div>
+            <div class="snum-grid">
+              ${num("Peak at once", L.peak)}
+              ${num("Average listen", duration(L.avg_listen_s), `${duration(L.listened_s)} in all`)}
+              ${num("Stayed to the end", L.stayed_to_end)}
+              ${num("Replays", R.plays, R.plays ? `${Math.round(R.avg_completion * 100)}% average` : "")}
+              ${num("Call-ins", st.engagement.comments)}
+              ${num("Reactions", st.engagement.hearts)}
+            </div>
+          </div>
+          ${live ? html`<p class="faint small stat-note">Updates every few seconds.</p>` : ""}
+        </aside>
+      </div>`);
+    applyAccent(el.querySelector("[data-stage]"), show.accent || "#B8336A");
     clearTimeout(timer);
     if (live) timer = setTimeout(load, REFRESH_MS);
   };
@@ -145,7 +159,7 @@ export async function statsView(root) {
   const el = document.createElement("div");
   el.className = "page-wrap";
   root.append(el);
-  setHtml(el, html`${appHeader({ search: false })}<main class="page wide" data-body>${waiting()}</main>`);
+  setHtml(el, html`${appHeader({ search: false })}<main class="page wide you stats-page" data-body>${waiting()}</main>`);
   const offHead = bindHeader(el);
   const data = await api.myStats().catch((err) => ({ error: err.message }));
   if (data.error) {
@@ -154,30 +168,43 @@ export async function statsView(root) {
   }
   const t = data.totals, subs = data.subscribers;
   setHtml(el.querySelector("[data-body]"), html`
-    <div class="page-title row"><div class="col grow"><h1>Stats</h1>
-      <p class="muted">How your pods are doing. Who listened is visible to you only, and only for signed-in listeners.</p></div>
-      <a class="btn chip-btn" href="/creator/${session.me.uid}" data-link>Your creator page</a></div>
-    <div class="stat-grid">
-      ${tile("Subscribers", subs.creator, "to you")}
-      ${tile("Pods", t.pods)}
-      ${tile("Listeners", t.listeners, "live, across pods")}
-      ${tile("Listening time", duration(t.listened_s), "live and replays")}
-      ${tile("Replays", t.replays)}
-    </div>
-    ${subs.albums.length ? html`<section class="card"><h2 class="card-h">Album subscribers</h2>
-      <ul class="people">${subs.albums.map((a) => html`<li class="person"><a class="grow" href="/album/${a.id}" data-link><strong>${a.title}</strong></a>
-        <span class="muted">${a.subscribers}</span></li>`)}</ul></section>` : ""}
-    <section class="card"><h2 class="card-h">Your pods</h2>
-      ${data.pods.length ? html`<div class="stats-table" role="table" aria-label="Your pods">
-        <div class="st-row st-head" role="row"><span role="columnheader">Pod</span><span role="columnheader">Listeners</span>
-          <span role="columnheader">Peak</span><span role="columnheader">Avg listen</span><span role="columnheader">Replays</span></div>
-        ${data.pods.map((p) => html`<a class="st-row" role="row" href="/show/${p.id}/stats" data-link>
-          <span role="cell" class="st-title">${sleeve(p, "sm")}
-            <span class="col"><strong class="ellipsis">${p.title || "Untitled pod"}</strong>
-              <span class="faint small">${p.status === "live" ? "Live now" : fmtAgo(p.created_at)}</span></span></span>
-          <span role="cell">${p.listeners}</span><span role="cell">${p.peak}</span>
-          <span role="cell">${duration(p.avg_listen_s)}</span><span role="cell">${p.replays}</span></a>`)}
-      </div>` : html`<p class="empty">No pods yet.</p>`}
-    </section>`);
+    <div class="page-title"><div class="col">
+      <h1 class="two">Stats.<span class="ask">How your pods are doing.</span></h1>
+    </div></div>
+    <div class="you-body">
+      <div class="you-lists">
+        <section class="intro-sec"><h2 class="create-h2 first">Your pods <span class="faint">${data.pods.length || ""}</span></h2>
+          ${data.pods.length ? html`<div class="stats-table" role="table" aria-label="Your pods">
+            <div class="st-row st-head" role="row"><span role="columnheader">Pod</span><span role="columnheader">Listeners</span>
+              <span role="columnheader">Peak</span><span role="columnheader">Avg listen</span><span role="columnheader">Replays</span></div>
+            ${data.pods.map((p) => html`<a class="st-row" role="row" href="/show/${p.id}/stats" data-link>
+              <span role="cell" class="st-title">${sleeve(p, "sm")}
+                <span class="col"><strong class="ellipsis">${p.title || "Untitled pod"}</strong>
+                  <span class="faint small">${p.status === "live" ? "Live now" : fmtAgo(p.created_at)}</span></span></span>
+              <span role="cell">${p.listeners}</span><span role="cell">${p.peak}</span>
+              <span role="cell">${duration(p.avg_listen_s)}</span><span role="cell">${p.replays}</span></a>`)}
+          </div>` : html`<div class="mem-none">No pods yet. Make one and its numbers show up here.</div>`}
+        </section>
+        ${subs.albums.length ? html`<section class="intro-sec"><h2 class="create-h2">Album subscribers</h2>
+          <ul class="people">${subs.albums.map((a) => html`<li class="person ctile"><a class="grow" href="/album/${a.id}" data-link><strong>${a.title}</strong></a>
+            <span class="credit-pill">${a.subscribers}</span></li>`)}</ul></section>` : ""}
+      </div>
+      <aside class="you-side" aria-label="The numbers">
+        <div class="intro-stage stage ystage sstage" data-stage>
+          ${material()}
+          <span class="intro-air"><i aria-hidden="true"></i>All your pods</span>
+          <div class="col"><strong class="credit-num">${duration(t.listened_s)}</strong><span class="pstage-facts">listened, live and replays</span></div>
+          <div class="snum-grid">
+            ${num("Pods", t.pods)}
+            ${num("Listeners", t.listeners, "live, across pods")}
+            ${num("Replays", t.replays)}
+            ${num("Subscribers", subs.creator, "to you")}
+          </div>
+        </div>
+        <a class="btn quiet block" href="/creator/${session.me.uid}" data-link>${icon("globe", 16)}Your creator page</a>
+        <p class="faint small stat-note">Who listened is visible to you only, and only for signed-in listeners.</p>
+      </aside>
+    </div>`);
+  applyAccent(el.querySelector("[data-stage]"), "#B8336A");
   return { unmount() { offHead(); } };
 }

@@ -905,6 +905,70 @@
     .mem-tabs { margin-inline: 0; padding-inline: 0; flex-wrap: wrap; }
   }
 
+  /* ---- Connections and Admin: people as tiles, the action on a stage beside them ----------------------- */
+  .connections-page .create-h2:first-of-type { margin-top: 22px; }
+  .ctile { padding: 12px 12px 12px 14px; border-radius: 22px; background: var(--bg-2); box-shadow: none; min-height: 0; gap: 12px; }
+  .people:has(.ctile) { gap: 8px; }
+  .ctile .orb::before { opacity: .9; }
+  .ctile strong { font: 600 17px/1.15 var(--f-head); letter-spacing: -.02em; }
+  .ctile .btn { height: 40px; }
+  .invite-stage .pstage-say { font-size: 17px; }
+  .invite-stage .copy-row .field { background: rgba(255, 255, 255, .12); color: #fff; }
+  .invite-stage .copy-row .btn { background: #fff; color: #08080B; }
+  .invite-add { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+  .invite-add .error:empty { display: none; }
+  .admin-search { height: 56px; font-size: 20px; margin: 18px 0 12px; }
+  .admin-page .ptile { align-items: center; }
+  .admin-page .ptile .credit-pill { margin-left: auto; flex: none; background: var(--surface); box-shadow: none; }
+  .admin-page .ptile[aria-pressed="true"] .credit-pill { background: var(--fg); color: var(--bg); }
+  .admin-panel { display: flex; flex-direction: column; gap: 14px; }
+  .admin-panel .ystage { margin: 0; order: 0; }
+  .admin-who { gap: 4px; }
+  .admin-grant { display: flex; flex-direction: column; gap: 10px; }
+  .admin-grant .error:empty { display: none; }
+  @media (min-width: 1024px) { .admin-page .personas-side { margin-top: 18px; } }
+
+  /* ---- Stats: the numbers on a stage ------------------------------------------------------------------- */
+  .sstage .credit-num { font: 500 52px/.95 var(--f-head); letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+  .sstage .cstage-top .credit-num { font-size: 44px; }
+  .snum-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; margin-top: 4px; }
+  .snum { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .snum strong { font: 500 26px/1.05 var(--f-head); letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+  .snum span { font-size: 13px; font-weight: 700; color: var(--on-dim); }
+  .snum i { font-style: normal; font-size: 12px; color: var(--on-dim); opacity: .8; }
+  .stat-note { margin: 0 2px; text-align: center; }
+  .page.you > .back-link { align-self: flex-start; }
+  .stats-page .create-h2 .faint { font-size: 13px; font-weight: 600; }
+  .stat-panel { padding: 16px; border-radius: 24px; background: var(--bg-2); }
+  .stat-panel .chart { margin-top: 0; }
+  .stat-panel .empty { margin: 0; }
+  .chart .area { fill: color-mix(in oklch, var(--fg) 12%, transparent); stroke: var(--fg); }
+  .bars .bar { background: var(--fg); border-radius: 8px 8px 3px 3px; }
+  .stats-table { gap: 6px; }
+  .st-row { padding: 10px 12px; border-radius: 18px; }
+  a.st-row { background: var(--bg-2); transition: background .2s ease, box-shadow .2s ease; }
+  a.st-row:hover { background: var(--surface); box-shadow: var(--shadow); }
+  .st-head { padding-block: 0 2px; }
+  .stat-tile { background: var(--bg-2); box-shadow: none; border-radius: 20px; }
+
+  /* ---- Albums: filled tiles, and the album itself on a stage -------------------------------------------- */
+  .album-card { background: var(--bg-2); box-shadow: none; border-radius: 22px; padding: 14px 16px 14px 14px; }
+  .album-card:hover { background: var(--surface); box-shadow: var(--shadow); }
+  .album-text strong { font: 600 17px/1.15 var(--f-head); letter-spacing: -.02em; }
+  .album-stage { order: 0; margin: 14px 0 26px; padding: 26px; gap: 18px; min-height: 0; }
+  .album-stage .cstage-top { align-items: flex-end; gap: 22px; flex-wrap: wrap; }
+  .album-stage .album-cover.big { box-shadow: 14px -10px 0 -4px rgba(255, 255, 255, .22), 28px -20px 0 -8px rgba(255, 255, 255, .1); margin: 20px 28px 0 0; }
+  .album-stage .hero-text { flex: 1 1 320px; gap: 8px; }
+  .album-stage .hero-text h1 { font: 500 clamp(30px, 5vw, 46px)/1.02 var(--f-head); letter-spacing: -.045em; }
+  .album-stage .pstage-say { font-size: 16px; max-width: 62ch; color: var(--on-dim); }
+  .album-by { align-items: center; }
+  .album-stage .creator-chip { color: #fff; }
+  .album-stage .hero-actions .btn.quiet { background: rgba(255, 255, 255, .14); color: #fff; }
+  .album-stage .hero-actions .btn.quiet:hover { background: rgba(255, 255, 255, .22); }
+  .pstage .album-cover { box-shadow: 7px -5px 0 -2px rgba(255, 255, 255, .22), 14px -10px 0 -4px rgba(255, 255, 255, .1); margin: 8px 12px 0 0; }
+  .pstage .pstage-facts { display: inline-flex; align-items: center; gap: 5px; }
+  .pick-row { border-radius: 16px; }
+
   /* ---- panels that were forms in a box: open sections on the page, like New pod ----------------------- */
   .page .card:not(.about-box, .recorder, .credit-card, .accent) { background: none; box-shadow: none; padding: 0; border-radius: 0; gap: 12px; }
   .page .card:not(.about-box, .recorder, .credit-card, .accent) + .card,

@@ -1,7 +1,8 @@
 // /connections and /invite/{uid}: mutual connections. Pods shared with
 // "Connections" (or with you by name) show up under Shared on your home screen.
 import { api } from "../api.js";
-import { waiting } from "../components.js";
+import { shape } from "../cast.js";
+import { material, waiting } from "../components.js";
 import { html, setHtml } from "../html.js";
 import { icon } from "../icons.js";
 import { navigate } from "../router.js";
@@ -13,8 +14,8 @@ import { appHeader, bindHeader } from "./library.js";
 
 function person(c, actions) {
   return html`
-    <li class="person">
-      <span class="avatar" style="--av:${callerColor(c.name)};--size:40px">${initial(c.name)}</span>
+    <li class="person ctile">
+      ${shape(c.name, 40)}
       <span class="col grow"><strong>${c.name}</strong><span class="muted small">${c.email || ""}</span></span>
       <span class="row gap">${actions}</span>
     </li>`;
@@ -31,45 +32,56 @@ export async function connectionsView(root) {
   el.className = "page-wrap";
   setHtml(el, html`
     ${appHeader({ search: false })}
-    <main class="page">
-      <div class="page-title"><h1>Connections</h1>
-        <p class="muted">Connections can listen to the pods you share with them, and call in. You'll see theirs too.</p></div>
-      <section class="card">
-        <h2 class="card-h">Add someone</h2>
-        <form class="row gap" data-add>
-          <label class="sr-only" for="c-email">Their email</label>
-          <input id="c-email" class="field" type="email" placeholder="Their email" required>
-          <button class="btn white" type="submit">Send request</button>
-        </form>
-        <p class="error" role="alert" data-error></p>
-        <p class="muted small">Not on Impromptu yet? Send them your invite link:</p>
-        <div class="copy-row"><input class="field" readonly data-invite aria-label="Your invite link">
-          <button class="btn quiet" type="button" data-copy>${icon("copy", 18)}Copy</button></div>
-      </section>
-      <div data-lists></div>
+    <main class="page wide you connections-page">
+      <div class="page-title"><div class="col">
+        <h1 class="two">Connections.<span class="ask">Who hears what you share.</span></h1>
+      </div></div>
+      <div class="you-body">
+        <div class="you-lists" data-lists></div>
+        <aside class="you-side" aria-label="Add someone">
+          <div class="intro-stage stage ystage invite-stage">
+            ${material()}
+            <span class="intro-air"><i aria-hidden="true"></i>Your invite</span>
+            <p class="pstage-say">Send this link to someone who isn't on Impromptu yet. When they open it, you're one tap from connected.</p>
+            <div class="copy-row"><input class="field" readonly data-invite aria-label="Your invite link">
+              <button class="btn quiet" type="button" data-copy>${icon("copy", 18)}Copy</button></div>
+          </div>
+          <form class="invite-add" data-add>
+            <label class="field-label" for="c-email">Already here? Add them by email</label>
+            <div class="row gap">
+              <input id="c-email" class="field grow" type="email" placeholder="Their email" required>
+              <button class="btn white" type="submit">Send</button>
+            </div>
+            <p class="error" role="alert" data-error></p>
+          </form>
+        </aside>
+      </div>
     </main>`);
   root.append(el);
   const offHead = bindHeader(el);
 
+  const section = (id, title, n, body) => html`
+    <section class="intro-sec" aria-labelledby="${id}">
+      <h2 id="${id}" class="create-h2">${title}${n ? html` <span class="faint">${n}</span>` : ""}</h2>
+      ${body}
+    </section>`;
   const render = () => {
     if (!data) return setHtml(el.querySelector("[data-lists]"), waiting());
     el.querySelector("[data-invite]").value = new URL(data.invite_path, location.origin).toString();
     setHtml(el.querySelector("[data-lists]"), html`
-      ${data.incoming.length ? html`
-        <section class="card"><h2 class="card-h">Requests for you</h2><ul class="people">
+      ${data.incoming.length ? section("c-in", "Requests for you", data.incoming.length, html`<ul class="people">
           ${data.incoming.map((c) => person(c, html`
             <button class="btn white" type="button" data-accept="${c.uid}">Accept</button>
             <button class="btn quiet" type="button" data-remove="${c.uid}">Decline</button>`))}
-        </ul></section>` : ""}
-      <section class="card"><h2 class="card-h">Your connections <span class="faint">${data.connected.length}</span></h2>
-        ${data.connected.length ? html`<ul class="people">${data.connected.map((c) => person(c, html`
-            <button class="icon-btn small" type="button" data-remove="${c.uid}" data-confirm aria-label="Remove ${c.name}">${icon("close", 18)}</button>`))}</ul>`
-          : html`<p class="empty">No connections yet. Add someone by email, or share your invite link.</p>`}
-      </section>
-      ${data.outgoing.length ? html`
-        <section class="card"><h2 class="card-h">Waiting for them</h2><ul class="people">
+        </ul>`) : ""}
+      ${section("c-yours", "Your connections", data.connected.length, data.connected.length
+        ? html`<ul class="people">${data.connected.map((c) => person(c, html`
+            <button class="round-btn mem-btn" type="button" data-remove="${c.uid}" data-confirm aria-label="Remove ${c.name}">${icon("close", 16, 2.4)}</button>`))}</ul>`
+        : html`<div class="mem-none">No connections yet. Send your invite link, or add someone by email.
+            Connections can listen to the pods you share with them, and call in. You'll see theirs too.</div>`)}
+      ${data.outgoing.length ? section("c-out", "Waiting for them", data.outgoing.length, html`<ul class="people">
           ${data.outgoing.map((c) => person(c, html`<button class="btn quiet" type="button" data-remove="${c.uid}">Cancel</button>`))}
-        </ul></section>` : ""}`);
+        </ul>`) : ""}`);
   };
   const load = async () => {
     data = await api.connections();
