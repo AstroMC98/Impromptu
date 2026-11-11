@@ -446,6 +446,9 @@ class ShowRunner:
                     task.cancel()
             for task in list(self._research_tasks):
                 task.cancel()
+            release = getattr(self.gemini, "release_script_caches", None)
+            if release is not None:               # the show's prompt caches aren't needed any more
+                release(self.source)
 
     # ---- writing ----------------------------------------------------------------
 

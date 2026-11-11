@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import hashlib
 import json
 import logging
 import re
@@ -33,6 +34,10 @@ log = logging.getLogger("podcasts.llm")
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$")
 # Gemini's implicit cache only serves prompts at least this long (Gemini 3.x Flash).
 CACHE_MIN_TOKENS = 4_096
+# An explicit cache has to hold at least 1,024 tokens. Under this many characters a prompt
+# can't reach that, so making one isn't tried.
+SCRIPT_CACHE_MIN_CHARS = 3_000
+SCRIPT_CACHES_KEPT = 64          # across all shows; the oldest is deleted past this
 
 
 def _log_cache(label: str, interaction) -> None:
@@ -42,6 +47,20 @@ def _log_cache(label: str, interaction) -> None:
     cached = getattr(usage, "total_cached_tokens", None) or 0
     if total >= CACHE_MIN_TOKENS:
         log.info("%s: %d of %d input tokens from the cache", label, cached, total)
+
+
+@dataclass
+class _ScriptCache:
+    """An explicit cache of one writer system prompt (see Gemini._script_cache)."""
+    source: str                                  # hash of the show's source, to release by
+    name: str = ""                               # the cache's id, once it's made
+    expires: float = 0.0                         # monotonic
+    task: asyncio.Task | None = None             # still being made
+    failed: bool = False                         # couldn't be made: don't try again
+
+
+def _digest(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 class ModelOutputError(RuntimeError):
@@ -68,6 +87,8 @@ class Gemini:
         http_options = {"base_url": settings.gemini_base_url} if settings.gemini_base_url else None
         self.client = genai.Client(api_key=settings.gemini_api_key, http_options=http_options)
         self.settings = settings
+        self._script_caches: dict[str, _ScriptCache] = {}     # hash of a writer system prompt -> its cache
+        self._cache_deletes: set[asyncio.Task] = set()
         if settings.gemini_base_url and settings.gemini_base_url.startswith("http://"):
             # The SDK opens Live sessions over wss:// only; the local stub speaks ws://.
             api = self.client._api_client
@@ -101,6 +122,121 @@ class Gemini:
         if label:
             _log_cache(label, interaction)
         return _parse_json(interaction.output_text)
+
+    # ---- the writers' prompt cache -------------------------------------------------
+    # Every segment call sends the same long system prompt: the source, the rules, the
+    # hosts, the plan. Gemini's implicit cache was meant to serve that prefix, but measured
+    # (gemini-3.8-flash, November 2026) it serves none of it to independent calls. So the
+    # prompt is put in an explicit cache, which the Interactions API can't use: a segment
+    # written from the cache goes through generateContent instead. The prompt and the
+    # schema are the same either way, and anything that goes wrong with the cache falls
+    # back to the uncached call, so a show never waits on it or fails over it.
+
+    def _script_cache(self, system: str, source: str) -> str | None:
+        """The name of the cache holding this system prompt, or None while there isn't
+        one. Making it takes a couple of seconds, so that happens in the background and
+        the calls in the meantime go uncached."""
+        s = self.settings
+        if not s.script_cache or s.gemini_base_url or len(system) < SCRIPT_CACHE_MIN_CHARS:
+            return None                       # off, a stub server (no cache service), or too short
+        key = _digest(system)
+        entry = self._script_caches.get(key)
+        now = time.monotonic()
+        if entry is not None and entry.name and entry.expires - now < 60:
+            del self._script_caches[key]      # about to lapse: make a fresh one
+            entry = None
+        if entry is None:
+            entry = self._script_caches[key] = _ScriptCache(source=_digest(source))
+            entry.task = asyncio.create_task(self._make_script_cache(key, entry, system))
+            self._trim_script_caches()
+        return entry.name or None
+
+    async def _make_script_cache(self, key: str, entry: _ScriptCache, system: str) -> None:
+        ttl = self.settings.script_cache_ttl_seconds
+        try:
+            made = await self.client.aio.caches.create(
+                model=self.settings.script_model,
+                config=types.CreateCachedContentConfig(system_instruction=system, ttl=f"{ttl}s"))
+        except Exception as exc:  # too small, unsupported by the model, a network error...
+            entry.failed = True
+            log.info("no prompt cache for this show (%s); writing uncached", str(exc)[:200])
+            return
+        finally:
+            entry.task = None
+        entry.name, entry.expires = made.name or "", time.monotonic() + ttl
+        if self._script_caches.get(key) is not entry:      # released or trimmed while it was being made
+            await self._delete_script_cache(entry)
+
+    async def _delete_script_cache(self, entry: _ScriptCache) -> None:
+        name, entry.name = entry.name, ""
+        if not name:
+            return
+        try:
+            await self.client.aio.caches.delete(name=name)
+        except Exception as exc:  # it lapses on its own at the end of its TTL
+            log.info("couldn't delete prompt cache %s: %s", name, str(exc)[:200])
+
+    def _trim_script_caches(self) -> None:
+        while len(self._script_caches) > SCRIPT_CACHES_KEPT:
+            oldest = next(iter(self._script_caches))
+            self._release(self._script_caches.pop(oldest))
+
+    def _release(self, entry: _ScriptCache) -> None:
+        if entry.name:
+            task = asyncio.create_task(self._delete_script_cache(entry))
+            self._cache_deletes.add(task)                 # held, so it isn't collected before it runs
+            task.add_done_callback(self._cache_deletes.discard)
+        # still being made: _make_script_cache deletes it once it sees it has been dropped
+
+    def release_script_caches(self, source: str) -> None:
+        """A show is over: drop the caches made for its source (every version of its
+        system prompt: added context and restyles each made one)."""
+        mark = _digest(source)
+        keys = [k for k, e in self._script_caches.items() if e.source == mark]
+        for key in keys:
+            self._release(self._script_caches.pop(key))
+        if keys:
+            log.info("released %d prompt cache%s", len(keys), "" if len(keys) == 1 else "s")
+
+    async def finish_cache_deletes(self) -> None:
+        """Wait for released caches to be deleted. For a script about to exit; the server's
+        loop keeps running, so there the deletes finish on their own."""
+        if self._cache_deletes:
+            await asyncio.gather(*list(self._cache_deletes), return_exceptions=True)
+
+    async def _segment_call(self, *, system: str, user: str, schema: dict, thinking: str | None, source: str) -> dict:
+        name = self._script_cache(system, source)
+        if name:
+            try:
+                response = await self.client.aio.models.generate_content(
+                    model=self.settings.script_model,
+                    contents=user,
+                    config=types.GenerateContentConfig(
+                        cached_content=name,
+                        response_mime_type="application/json",
+                        response_json_schema=schema,
+                        thinking_config=types.ThinkingConfig(
+                            thinking_level=thinking or self.settings.script_thinking_level),
+                    ),
+                )
+            except Exception as exc:
+                # Write this segment uncached. A cache that has lapsed or been deleted is made
+                # again on the next call; any other refusal stops caching this prompt, so a
+                # model that won't take it doesn't cost a new cache every segment.
+                log.warning("prompt cache %s unusable (%s); writing uncached", name, str(exc)[:200])
+                entry = self._script_caches.get(_digest(system))
+                if entry is not None and entry.name == name:
+                    if "not found" in str(exc).lower():
+                        del self._script_caches[_digest(system)]
+                    else:
+                        entry.name, entry.failed = "", True
+            else:
+                usage = response.usage_metadata
+                log.info("segment: %d of %d input tokens from the cache",
+                         getattr(usage, "cached_content_token_count", None) or 0,
+                         getattr(usage, "prompt_token_count", None) or 0)
+                return _parse_json(response.text)
+        return await self._json_call(system=system, user=user, schema=schema, thinking=thinking, label="segment")
 
     async def plan_show(self, req: ShowRequest, source: str) -> ShowPlan:
         data = await self._json_call(
@@ -139,7 +275,7 @@ class Gemini:
         for attempt in range(2):
             try:
                 draft = SegmentDraft.model_validate(
-                    await self._json_call(system=system, user=user, schema=schema, thinking=thinking, label="segment")
+                    await self._segment_call(system=system, user=user, schema=schema, thinking=thinking, source=source)
                 )
             except (ModelOutputError, ValidationError) as exc:
                 last_error = exc

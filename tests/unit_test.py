@@ -2110,6 +2110,90 @@ def _():
     assert "NOT THE FINAL SEGMENT" not in prompts.writer_input(r._context()[0], r.plan)
 
 
+@check("prompt cache: made in the background, used once it's there, never in a show's way, released at the end")
+async def _():
+    from types import SimpleNamespace as NS
+
+    from app import llm
+    calls = {"create": 0, "delete": [], "cached": 0, "plain": 0}
+    fail = {"create": None, "cached": None}
+
+    class Caches:
+        async def create(self, *, model, config):
+            calls["create"] += 1
+            if fail["create"]:
+                raise RuntimeError(fail["create"])
+            assert config.system_instruction.startswith("SOURCE:") and config.ttl == "1800s"
+            return NS(name=f"cachedContents/c{calls['create']}")
+
+        async def delete(self, *, name):
+            calls["delete"].append(name)
+
+    class Models:
+        async def generate_content(self, *, model, contents, config):
+            if fail["cached"]:
+                raise RuntimeError(fail["cached"])
+            calls["cached"] += 1
+            assert config.cached_content.startswith("cachedContents/") and config.system_instruction is None
+            assert config.response_json_schema == {"s": 1} and config.thinking_config.thinking_level.value == "LOW"
+            return NS(text='{"from": "cache"}', usage_metadata=NS(cached_content_token_count=9, prompt_token_count=10))
+
+    def gemini(**settings):
+        g = llm.Gemini.__new__(llm.Gemini)
+        g.settings = Settings(**settings)
+        g.client = NS(aio=NS(caches=Caches(), models=Models()))
+        g._script_caches, g._cache_deletes = {}, set()
+
+        async def plain(**kw):
+            calls["plain"] += 1
+            return {"from": "plain"}
+        g._json_call = plain
+        return g
+
+    async def settle(g):
+        for e in list(g._script_caches.values()):
+            if e.task:
+                await e.task
+        await asyncio.sleep(0)
+
+    system = prompts.source_block("x" * 4000) + "rules"
+    ask = dict(user="go", schema={"s": 1}, thinking=None, source="x" * 4000)
+    g = gemini()
+    assert await g._segment_call(system=system, **ask) == {"from": "plain"}       # the cache is still being made
+    await settle(g)
+    assert await g._segment_call(system=system, **ask) == {"from": "cache"} and calls["create"] == 1
+    assert await g._segment_call(system=system + " and a restyle", **ask) == {"from": "plain"}   # its own cache
+    await settle(g)
+    assert calls["create"] == 2 and len(g._script_caches) == 2
+    # a cache that has gone is made again; any other refusal stops caching that prompt
+    fail["cached"] = "403 CachedContent not found"
+    assert await g._segment_call(system=system, **ask) == {"from": "plain"} and len(g._script_caches) == 1
+    fail["cached"] = None
+    await g._segment_call(system=system, **ask)
+    await settle(g)
+    assert calls["create"] == 3
+    fail["cached"] = "400 this model doesn't take caches"
+    assert await g._segment_call(system=system, **ask) == {"from": "plain"}
+    fail["cached"] = None
+    assert await g._segment_call(system=system, **ask) == {"from": "plain"} and calls["create"] == 3
+    # the show ends: its caches are deleted
+    g.release_script_caches("x" * 4000)
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+    assert not g._script_caches and "cachedContents/c2" in calls["delete"]
+    # one that can't be made is not tried again; short prompts, the switch and a stub server never try
+    fail["create"], before = "400 Cached content is too small", calls["create"]
+    g = gemini()
+    await g._segment_call(system=system, **ask)
+    await settle(g)
+    assert await g._segment_call(system=system, **ask) == {"from": "plain"} and calls["create"] == before + 1
+    fail["create"] = None
+    for g, text in ((gemini(), "short"), (gemini(script_cache=False), system),
+                    (gemini(gemini_base_url="http://127.0.0.1:1"), system)):
+        assert await g._segment_call(system=text, **ask) == {"from": "plain"} and not g._script_caches
+    assert calls["create"] == before + 1
+
+
 @check("starter templates: a stage talk and a solo pod for one host, a talk show for two")
 def _():
     from app.catalog import MUSIC_MOOD_FOR, MUSIC_MOODS, TEMPLATES_BY_ID

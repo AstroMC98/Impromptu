@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     # Writes the episode plan and every dialogue segment, and describes photos.
     script_model: str = "gemini-3.8-flash"
     script_thinking_level: str = "low"  # low keeps segment latency down
+    # Keep each show's writer prompt (the source, the rules, the plan) in an explicit Gemini
+    # cache, so every segment after the first reads it at the cached rate instead of paying
+    # for the whole source again. Segments written from the cache go through generateContent
+    # rather than the Interactions API. Turn it off if a model stops supporting explicit
+    # caches: the writers then call exactly as before.
+    script_cache: bool = True
+    script_cache_ttl_seconds: int = 1800   # a cache outlived by its show is remade on the next segment
     # Answers to an interruption. gemini-3.8-flash rejects "minimal" (HTTP 400), so "low"
     # is the fastest it allows; a model that accepts "minimal" could answer sooner.
     interjection_thinking_level: str = "low"

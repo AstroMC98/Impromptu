@@ -150,6 +150,7 @@ async def main() -> int:
     finally:
         segments = dict(room.segments)
         room.close()
+        await app_main.gemini().finish_cache_deletes()     # this process is about to exit
 
     done = room.doc
     print(f"{done.get('status')} ({done.get('ended_reason')}): \"{done.get('title')}\", "

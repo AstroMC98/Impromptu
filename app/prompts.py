@@ -15,9 +15,11 @@ TRANSCRIPT_WINDOW = 80
 
 
 # Every call that reads the SOURCE opens with it, byte for byte the same: the planner,
-# the writers (every segment) and the re-planner. Gemini's implicit cache reuses the
-# longest identical prefix, so a long source is read once, when the plan is made, and
-# each later call (a segment, a re-plan after a steer) gets it from the cache.
+# the writers (every segment) and the re-planner. That is the shape Gemini's implicit
+# cache wants (it reuses the longest identical prefix), but measured in November 2026 it
+# served none of it to these calls. So the writers' whole system prompt goes in an explicit
+# cache instead (llm.Gemini._script_cache), and every segment after the first reads it
+# from there. The plan and a re-plan are one call each and are sent whole.
 def source_block(source: str) -> str:
     return f"SOURCE:\n<<<\n{source}\n>>>\n\n"
 
@@ -90,8 +92,9 @@ WRITER_INTRO = {
 
 # After the source (source_block), ordered from what never changes to what can change
 # mid-show: rules, hosts, direction, plan, then the append-only added context, and the
-# style last. Gemini's implicit caching reuses the longest identical prefix, so a
-# restyle or new context only re-reads the tail, never the (possibly huge) source.
+# style last, so that a cache keyed on the longest identical prefix would only re-read
+# the tail after a restyle or new context. The explicit cache the writers use today holds
+# the whole prompt, so either of those makes a new cache; they are rare within a show.
 WRITER_SYSTEM = """\
 {intro}
 
