@@ -465,6 +465,11 @@
   .callin-form:focus-within .callin-note { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
   @media (prefers-reduced-motion: reduce) { .callin-note { transition: none; transform: none; } }
 
+  /* ---- notes listeners left -------------------------------------------------------------------------- */
+  .note-row { align-items: flex-start; }
+  .note-row .mem-text { font-weight: 500; }
+  .note-meta { display: block; margin-top: 3px; font-size: 12.5px; font-weight: 600; color: var(--fg-2); }
+
   /* ---- notebooks, and the rest of the Memory page ---------------------------------------------------- */
   .mem-more { display: flex; flex-direction: column; gap: 30px; }
   .mem-block { display: flex; flex-direction: column; gap: 10px; }

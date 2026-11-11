@@ -9,8 +9,11 @@ of them, and go into the co-host's instructions on the next call that has memory
 Memories are saved items of kind "memories" (store.list_items / put_item), so they work
 on every store with no new collection code:
 
-    {id, text, status: "pending" | "kept", scope: "host" | "shared" | "caller", host,
-     host_key, show_id, show_title, created_at, updated_at}
+    {id, text, status: "pending" | "kept", scope: "host" | "shared" | "caller" | "audience",
+     host, host_key, show_id, show_title, created_at, updated_at}
+
+Scope "audience" is something several listeners said in notes they left (feedback.py),
+for the hosts those notes were about (host_keys).
 
 Caller memory is the same thing pointed the other way: with "Remember callers" on, a
 signed-in listener who calls in to one of your live pods is proposed as a memory for
@@ -70,7 +73,17 @@ async def recall(store: Store, uid: str, host_name: str) -> list[str]:
     kept = [m for m in await all_items(store, uid) if m.get("status") == "kept"]
     own = [m["text"] for m in kept if m.get("scope") == "host" and m.get("host_key") == key]
     shared = [m["text"] for m in kept if m.get("scope") == "shared"]
-    return (own + shared)[:PROMPT_ITEMS]
+    return (own + shared + [f"Listeners have said: {t}" for t in audience(kept, host_name)])[:PROMPT_ITEMS]
+
+
+AUDIENCE_NOTES = 6         # sentiments one host is handed
+
+
+def audience(items: list[dict], host_name: str) -> list[str]:
+    """What listeners, several of them, have said about this host's shows (approved only)."""
+    key = host_key(host_name)
+    return [m["text"] for m in items if m.get("status") == "kept" and m.get("scope") == "audience"
+            and key in m.get("host_keys", [])][:AUDIENCE_NOTES]
 
 
 def new_item(text: str, *, status: str, scope: str, host: str, show_id: str = "", show_title: str = "") -> dict:

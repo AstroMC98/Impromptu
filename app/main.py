@@ -112,6 +112,7 @@ from pydantic import BaseModel, Field, ValidationError
 from starlette.requests import HTTPConnection
 from fastapi.staticfiles import StaticFiles
 
+from . import feedback
 from . import ingest as ingest_mod
 from . import memo as memo_mod
 from . import memory
@@ -364,8 +365,12 @@ async def _show_extras(doc: dict, user: User | None) -> dict:
         if album and await accounts.can_view(user, album):
             albums.append({"id": album["id"], "title": album["title"], "accent": album.get("accent")})
     owner = await accounts.get(owner_uid)
+    takes_notes = False
+    if settings.memory_on and user and user.uid != owner_uid and doc.get("kind", "pod") != "briefing":
+        takes_notes = (await store.get_user(owner_uid) or {}).get("listener_notes") is not False
     return {
         "creator": {
+            "takes_notes": takes_notes,
             **(owner.public() if owner else {"uid": owner_uid, "name": doc.get("owner_name", ""), "photo": ""}),
             "subscribers": await store.count_subscribers(f"creator:{owner_uid}"),
             "subscribed": ("creator", owner_uid) in subs,
@@ -883,6 +888,24 @@ async def _with_notebooks(uid: str, hosts: list[HostRequest], about: str) -> lis
     return out
 
 
+async def _with_audience(uid: str, hosts: list[HostRequest]) -> list[HostRequest]:
+    """What several listeners have said about a host's shows, once you've approved it, goes in
+    that host's private notes: it shapes the pod without being announced."""
+    kept = [m for m in await memory.all_items(store, uid) if m.get("status") == "kept" and m.get("scope") == "audience"]
+    if not kept:
+        return hosts
+    out = []
+    for h in hosts:
+        said = memory.audience(kept, h.name) if h.name.strip() else []
+        if said:
+            block = ("What listeners have told you after past shows (several of them each). Let it shape this "
+                     "one quietly; don't announce it or thank anyone for it:\n" + "\n".join(f"- {t}" for t in said))
+            if len(h.context) + len(block) + 2 <= NOTES_CHARS:
+                h = h.model_copy(update={"context": f"{h.context.strip()}\n\n{block}".strip()})
+        out.append(h)
+    return out
+
+
 @app.get("/api/notebooks")
 async def list_notebooks(request: Request) -> dict:
     user = await require_user(request)
@@ -983,16 +1006,20 @@ async def _room_for_memory(uid: str) -> None:
 async def list_memories(request: Request) -> dict:
     user = await require_user(request)
     if not settings.memory_on:
-        return {"pending": [], "kept": [], "remember_callers": False, "remember_me": False}
+        return {"pending": [], "kept": [], "remember_callers": False, "remember_me": False, "listener_notes": False}
     doc = await store.get_user(user.uid) or {}
+    if doc.get("listener_notes") is not False:
+        _consider_notes(user.uid)      # anything listeners agree on since last time shows up on the next visit
     return {**memory.split(await memory.all_items(store, user.uid)),
             "remember_callers": bool(doc.get("remember_callers")),
-            "remember_me": doc.get("remember_me") is not False}
+            "remember_me": doc.get("remember_me") is not False,
+            "listener_notes": doc.get("listener_notes") is not False}
 
 
 class MemorySettings(BaseModel):
     remember_callers: bool | None = None
     remember_me: bool | None = None
+    listener_notes: bool | None = None
 
 
 @app.put("/api/memories/settings")
@@ -1010,7 +1037,85 @@ async def memory_settings(body: MemorySettings, request: Request) -> dict:
     if body.remember_me is not None:
         rooms.caller_consent(user.uid, body.remember_me)    # live rooms hold a copy: keep it true
     doc = await store.get_user(user.uid) or {}
-    return {"remember_callers": bool(doc.get("remember_callers")), "remember_me": doc.get("remember_me") is not False}
+    return {"remember_callers": bool(doc.get("remember_callers")), "remember_me": doc.get("remember_me") is not False,
+            "listener_notes": doc.get("listener_notes") is not False}
+
+
+# ---- notes from listeners (feedback.py) ---------------------------------------------
+
+NOTE_LIMIT = Limiter(rate=1 / 20, burst=3)     # per listener
+_note_tasks: set[asyncio.Task] = set()
+
+
+def _consider_notes(owner_uid: str) -> None:
+    """In the background: do enough different listeners agree on something yet?"""
+    llm = gemini_or_none()
+    if llm is None:
+        return
+
+    async def look() -> None:
+        try:
+            await feedback.consider(store, owner_uid, llm.find_sentiments)
+        except Exception as exc:
+            log.warning("account %s: couldn't read listener notes (%s)", owner_uid, exc)
+
+    task = asyncio.create_task(look())
+    _note_tasks.add(task)
+    task.add_done_callback(_note_tasks.discard)
+
+
+class NoteIn(BaseModel):
+    text: str = Field(min_length=1, max_length=2_000)
+
+
+@app.post("/api/shows/{show_id}/notes")
+async def leave_note(show_id: str, body: NoteIn, request: Request) -> dict:
+    """A listener's note for the hosts. Never read on air, and one note changes nothing:
+    it counts once enough different listeners say the same thing and the creator agrees."""
+    _require_memory()
+    _require_origin(request)
+    user = await require_user(request)
+    doc, _, _ = await _viewable(request, show_id)
+    owner_uid = doc.get("owner_uid") or ""
+    if user.uid == owner_uid:
+        raise HTTPException(status_code=422, detail="This is your own pod. Notes are for your listeners to leave.")
+    if doc.get("kind", "pod") == "briefing" or (await store.get_user(owner_uid) or {}).get("listener_notes") is False:
+        raise HTTPException(status_code=403, detail="This creator isn't taking notes from listeners.")
+    if not NOTE_LIMIT.take(user.uid):
+        raise HTTPException(status_code=429, detail="Easy there. You can leave another note in a moment.")
+    hosts = [h.get("name", "") for h in doc.get("hosts", []) if isinstance(h, dict)]
+    try:
+        await feedback.add(store, owner_uid, from_uid=user.uid, from_name=user.name, text=body.text,
+                           show_id=show_id, show_title=doc.get("title") or "", hosts=hosts)
+    except feedback.TooManyNotes as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    _consider_notes(owner_uid)
+    return {"ok": True}
+
+
+@app.get("/api/notes")
+async def list_notes(request: Request) -> dict:
+    """The notes listeners have left you, newest first."""
+    user = await require_user(request)
+    if not settings.memory_on:
+        return {"notes": [], "threshold": feedback.THRESHOLD}
+    notes = await feedback.all_notes(store, user.uid)
+    return {"notes": [{k: n.get(k) for k in ("id", "text", "from_name", "show_id", "show_title", "hosts", "used", "created_at")}
+                      for n in notes[:60]],
+            "total": len(notes), "threshold": feedback.THRESHOLD}
+
+
+@app.delete("/api/notes/{note_id}")
+async def remove_note(note_id: str, request: Request) -> dict:
+    _require_memory()
+    _require_origin(request)
+    user = await require_user(request)
+    if not any(n["id"] == note_id for n in await feedback.all_notes(store, user.uid)):
+        raise HTTPException(status_code=404, detail="No such note.")
+    await store.delete_item(user.uid, feedback.KIND, note_id)
+    return {"ok": True}
 
 
 @app.post("/api/memories")
@@ -1045,7 +1150,7 @@ async def edit_memory(memory_id: str, body: MemoryEdit, request: Request) -> dic
         if not text:
             raise HTTPException(status_code=422, detail="A memory can't be empty. Remove it instead.")
         item["text"] = text
-    if body.scope is not None and item.get("scope") != "caller":
+    if body.scope is not None and item.get("scope") not in ("caller", "audience"):
         item["scope"] = body.scope if body.scope == "shared" or item.get("host_key") else "shared"
     item["updated_at"] = time.time()
     await store.put_item(user.uid, memory.KIND, item)
@@ -1638,6 +1743,7 @@ async def create_show(body: NewShow, request: Request) -> dict:
     source = req.source[: settings.max_source_chars]
     if settings.memory_on:
         req = req.model_copy(update={"hosts": await _with_notebooks(user.uid, req.hosts, f"{source[:4000]}\n{req.style}")})
+        req = req.model_copy(update={"hosts": await _with_audience(user.uid, req.hosts)})
     model = _check_capacity() if body.live else None
     show_id = secrets.token_urlsafe(9)
     now = time.time()

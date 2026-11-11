@@ -79,6 +79,8 @@ not affected.
 | Memory | `app/memory.py`, `/api/memories`, the Memory page (`static/js/views/memory.js`), "Use memory" on the co-host setup page | first slice built |
 | Notebooks | `app/notebook.py`, `/api/notebook`, `static/js/views/notebook.js` (`/notebook?host=Name`) | built |
 | Caller memory | `memory.propose_callers` / `returning`, the room's `_load_caller_memory` and `_remember_callers`, the switch on the Memory page | built |
+| Caller consent | `remember_me` on the account, `Conn.remember_me`, `ShowRoom._may_remember`, the note on the call-in box | built |
+| Listener notes | `app/feedback.py`, `/api/shows/{id}/notes`, `/api/notes`, the More sheet, Listeners on the Memory page | built |
 | The cast | `catalog.CAST`: 18 house hosts shared by templates and pickers, a voice each | built |
 
 Memory, as built: a call started with "Use memory" hands the co-host what you have
@@ -104,6 +106,16 @@ off (`remember_me` on the account; only an explicit `false` opts out). It is rea
 socket joins a room (`Conn.remember_me`), and `ShowRoom._may_remember` needs both switches.
 While both are on, the call-in box shows "The hosts may remember you…" when they go to type
 (`may_remember` in the snapshot, `.callin-note`).
+
+Listener notes (`app/feedback.py`): a signed-in listener can leave a pod's hosts a note from
+the More sheet, live or on a replay. It is never read on air and one note changes nothing.
+When notes from three different listeners are waiting, the model is asked what they share;
+a sentiment counts only if three different people back it, by the server's own count of the
+notes the model cites. What passes becomes a proposal on the Memory page (scope `audience`,
+"3 listeners said"), and once approved goes into those hosts' private notes for later pods
+and into their memory on co-host calls. The creator sees every note under Listeners on the
+Memory page and can switch the feature off there ("Take notes from listeners",
+`listener_notes`, on unless false).
 
 Memories and notebooks belong to a host by name, so renaming a host leaves them behind.
 

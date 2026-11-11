@@ -328,6 +328,44 @@ export function openHostsSheet(ctl) {
 
 // ---- More ----------------------------------------------------------------------------
 
+/** A listener's note for the hosts: never read out, and it only counts once several
+ *  listeners say the same thing and the creator agrees (feedback.py). */
+export function openNoteSheet(ctl) {
+  const s = ctl.store;
+  const hosts = (s.show.hosts || []).map((h) => h.name).filter(Boolean).join(" and ") || "the hosts";
+  const sheet = openSheet({
+    title: "Leave the hosts a note",
+    body: html`
+      <form class="col gap" data-note-form>
+        <p class="muted small">For ${hosts}. It isn't read on air. When several listeners say the same thing,
+          ${s.creator?.name || "the creator"} can have the hosts take it on in later shows.</p>
+        <label class="sr-only" for="note-text">Your note</label>
+        <textarea id="note-text" class="field area short" maxlength="400" placeholder="More of the listener questions, less recap at the start."></textarea>
+        <p class="error" role="alert" data-note-error></p>
+        <button class="btn white big block" type="submit">Leave the note</button>
+      </form>`,
+  });
+  const form = sheet.el.querySelector("[data-note-form]");
+  const area = form.querySelector("#note-text");
+  area.focus();
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = area.value.trim();
+    const error = form.querySelector("[data-note-error]");
+    if (!text) { error.textContent = "Write a note first."; return; }
+    const btn = form.querySelector("button[type=submit]");
+    btn.disabled = true;
+    try {
+      await api.leaveNote(ctl.id, text);
+      sheet.close();
+      toast("Note left for the hosts.");
+    } catch (err) {
+      error.textContent = err.message;
+      btn.disabled = false;
+    }
+  });
+}
+
 export function openMoreSheet(ctl) {
   const s = ctl.store;
   const div = document.createElement("div");
@@ -339,6 +377,8 @@ export function openMoreSheet(ctl) {
       <button type="button" class="menu-item" data-ctx>${icon("addFile", 20)}Add context <span class="faint">a note, file, link or photo</span></button>` : ""}
     ${live && s.producer && !briefing ? html`
       <button type="button" class="menu-item" data-restyle>${icon("restyle", 20)}Restyle the show</button>` : ""}
+    ${!s.producer && s.creator?.takes_notes && ctl.canTalk ? html`
+      <button type="button" class="menu-item" data-note>${icon("note", 20)}Leave the hosts a note <span class="faint">not read on air</span></button>` : ""}
     <button type="button" class="menu-item" data-dl-audio>${icon("download", 20)}Download audio${live ? " so far" : ""}</button>
     ${s.producer && s.show.has_raw_audio ? html`
       <button type="button" class="menu-item" data-dl-raw>${icon("download", 20)}Download the unedited call <span class="faint">before the editor's cuts</span></button>` : ""}
@@ -364,6 +404,10 @@ export function openMoreSheet(ctl) {
       location.href = api.rawAudioUrl(ctl.id);
     } else if (e.target.closest("[data-dl-text]")) {
       saveBlob(new Blob([s.transcriptMarkdown()], { type: "text/markdown" }), `${slug(s.show.title)}.md`);
+    } else if (e.target.closest("[data-note]")) {
+      sheet.close();
+      openNoteSheet(ctl);
+      return;
     } else if (e.target.closest("[data-share]")) {
       sheet.close();
       openShareSheet(ctl);

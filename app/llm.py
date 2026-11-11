@@ -404,6 +404,16 @@ class Gemini:
         found = data.get("memories")
         return [m for m in found if isinstance(m, dict) and m.get("text")] if isinstance(found, list) else []
 
+    async def find_sentiments(self, notes: list[dict], threshold: int) -> list[dict]:
+        """What several different listeners said in their notes: [{text, notes}] (feedback.py)."""
+        data = await self._json_call(
+            system=prompts.SENTIMENT_SYSTEM.format(threshold=threshold),
+            user=prompts.sentiment_input(notes),
+            schema=prompts.sentiment_schema(),
+        )
+        found = data.get("sentiments")
+        return [s for s in found if isinstance(s, dict) and s.get("text")] if isinstance(found, list) else []
+
     async def edit_cohost(self, turns: list[dict], you: str, host: str, minutes: float) -> EditPlan:
         """Title, show notes, chapters and what to cut, for a recorded co-host call."""
         data = await self._json_call(

@@ -2167,7 +2167,7 @@ def _():
     assert not may(False)                       # the creator never asked
     assert not may(True, me=False)              # the caller said no
     assert not may(True, uid=None, role="visitor") and not may(True, role="producer")
-    assert MemorySettings(remember_me=False).model_dump() == {"remember_callers": None, "remember_me": False}
+    assert MemorySettings(remember_me=False).model_dump() == {"remember_callers": None, "remember_me": False, "listener_notes": None}
     # Saying no in the middle of a show: it holds at once, and what the room noted is dropped.
     from app.room import Rooms
     conn, other = NS(uid="jo", remember_me=True), NS(uid="al", remember_me=True)
@@ -2178,6 +2178,58 @@ def _():
     assert conn.remember_me is False and other.remember_me is True and list(room.callers) == ["al"]
     live.caller_consent("jo", True)
     assert conn.remember_me is True and "jo" not in room.callers
+
+
+@check("listener notes: one voice sways nothing; a sentiment needs three different listeners, then your yes")
+def _():
+    from app import feedback, memory
+
+    async def run():
+        store = LocalStore(tempfile.mkdtemp(prefix="podcasts-notes-"))
+
+        async def note(uid, text, show="s1"):
+            return await feedback.add(store, "owner", from_uid=uid, from_name=uid.title(), text=text, show_id=show,
+                                      show_title="Daily Grind", hosts=["Mia Torres", "Jordan Blake"])
+
+        asked = []
+
+        async def find(notes, threshold):
+            asked.append(len(notes))
+            return [{"text": "Listeners want shorter intros.", "notes": [1, 2, 3]},      # jo, jo, al: two people
+                    {"text": "Listeners want more caller questions.", "notes": [2, 3, 4, 99]}]   # jo, al, bea
+
+        await note("jo", "Shorter intros please")
+        await note("jo", "More questions from callers")
+        await note("al", "Intro is long, and take more calls")
+        assert not feedback.enough(await feedback.all_notes(store, "owner"))
+        assert await feedback.consider(store, "owner", find) == 0 and asked == []       # two people: the model isn't even asked
+        await note("bea", "I'd love more call-ins")
+        assert await feedback.consider(store, "owner", find) == 1 and asked == [4]
+        assert await feedback.consider(store, "owner", find) == 0 and asked == [4]       # cooldown
+        items = await memory.all_items(store, "owner")
+        assert len(items) == 1
+        m = items[0]
+        assert (m["scope"], m["status"], m["listeners"], m["host_keys"]) == ("audience", "pending", 3, ["mia torres", "jordan blake"])
+        assert "caller questions" in m["text"]
+        assert memory.audience(items, "Mia Torres") == [] and await memory.recall(store, "owner", "Mia Torres") == []   # not until approved
+        m["status"] = "kept"
+        await store.put_item("owner", memory.KIND, m)
+        items = await memory.all_items(store, "owner")
+        assert memory.audience(items, "mia  torres") == [m["text"]] and memory.audience(items, "Zoe Park") == []
+        assert (await memory.recall(store, "owner", "Jordan Blake"))[0].startswith("Listeners have said:")
+        used = {n["from_uid"]: n["used"] for n in await feedback.all_notes(store, "owner") if n["text"] != "Shorter intros please"}
+        assert all(used.values())
+        await note("jo", "Third note")
+        try:
+            await note("jo", "Fourth note")
+            raise AssertionError("a fourth note on one pod got through")
+        except feedback.TooManyNotes:
+            pass
+    asyncio.run(run())
+    text = prompts.sentiment_input([{"from_uid": "u1", "text": "Hi", "hosts": ["Mia"], "show_title": "T"},
+                                    {"from_uid": "u2", "text": "Yo", "hosts": [], "show_title": "T"},
+                                    {"from_uid": "u1", "text": "Again", "hosts": ["Mia"], "show_title": "T"}])
+    assert "1. L1," in text and "2. L2," in text and "3. L1," in text and "u1" not in text
 
 
 def main() -> int:
