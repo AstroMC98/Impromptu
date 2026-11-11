@@ -2097,6 +2097,19 @@ def _():
     assert runner("talk-show").settings.segment_seconds == base == _runner().settings.segment_seconds
 
 
+@check("the last beat doesn't sign off before the final segment")
+def _():
+    r = _runner()
+    r.beat = 3                                           # the last of four beats, nothing written for it yet
+    ctx = r._context()[0]
+    assert not ctx.must_end and "NOT THE FINAL SEGMENT" in prompts.writer_input(ctx, r.plan)
+    r.end_requested = True
+    final = prompts.writer_input(r._context()[0], r.plan)
+    assert "THIS IS THE FINAL SEGMENT" in final and "NOT THE FINAL SEGMENT" not in final
+    r.end_requested, r.beat = False, 1
+    assert "NOT THE FINAL SEGMENT" not in prompts.writer_input(r._context()[0], r.plan)
+
+
 @check("starter templates: a stage talk and a solo pod for one host, a talk show for two")
 def _():
     from app.catalog import MUSIC_MOOD_FOR, MUSIC_MOODS, TEMPLATES_BY_ID

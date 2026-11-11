@@ -554,12 +554,18 @@ def writer_input(ctx: SegmentContext, plan: ShowPlan) -> str:
     if ctx.must_end:
         parts.append(
             "THIS IS THE FINAL SEGMENT. Land the last point, thank the listeners, and sign off "
-            "cleanly. Set beat_complete to true."
+            "cleanly: each host says goodbye once, and the last line is the end of the show. Set "
+            "beat_complete to true."
             + (" Answer the promised call-ins below before signing off." if ctx.promised else "")
         )
     elif ctx.beat_index + 1 < total:
         nxt = plan.beats[ctx.beat_index + 1]
         parts.append(f'NEXT BEAT: "{nxt.title}". Set up a natural handoff when you get there.')
+    else:
+        # The last beat usually takes several segments. Without this the hosts say goodnight
+        # in the first of them and again in each one after.
+        parts.append("THIS IS THE LAST BEAT, BUT NOT THE FINAL SEGMENT: there is more show after these lines. "
+                     "Don't thank the listeners, say goodbye or sign off yet; you'll be told when it's time.")
 
     if ctx.promised:
         parts.append(
