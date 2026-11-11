@@ -19,6 +19,7 @@ import { introView } from "./views/intro.js";
 import { libraryPageView, libraryView, youView } from "./views/library.js";
 import { loginView } from "./views/login.js";
 import { memoView } from "./views/memo.js";
+import { personasView } from "./views/personas.js";
 import { savedView } from "./views/saved.js";
 import { showView } from "./views/show.js";
 import { showStatsView, statsView } from "./views/stats.js";
@@ -62,7 +63,7 @@ async function boot() {
     [/^\/cohost$/, cohostSetupView],
     [/^\/cohost\/([\w-]+)$/, cohostCallView],
     [/^\/login$/, loginView],
-    [/^\/personas$/, savedView],
+    [/^\/personas$/, personasView],
     [/^\/styles$/, savedView],
     [/^\/connections$/, connectionsView],
     [/^\/invite\/([\w-]+)$/, inviteView],

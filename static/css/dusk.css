@@ -660,6 +660,61 @@
     .intro-go { margin-top: 18px; }
   }
 
+  /* ---- personas: tiles, and the one you pick on a small stage ----------------------------------------- */
+  .personas-page .page-title { margin-bottom: 6px; }
+  .personas-lists { display: flex; flex-direction: column; min-width: 0; }
+  .personas-side { display: none; }
+  .ptile-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .ptile { border: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: none; display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 16px 14px 14px; border-radius: 22px; background: var(--bg-2); text-align: left;
+    transition: background .2s ease, box-shadow .2s ease, transform var(--dur-snappy) var(--spring-snappy); }
+  .ptile:hover { background: color-mix(in oklch, var(--bg-2) 84%, var(--fg) 6%); }
+  .ptile:active { transform: scale(.985); }
+  .ptile[aria-pressed="true"] { background: var(--surface); box-shadow: inset 0 0 0 2px var(--fg), var(--shadow); }
+  .ptile .orb::before { opacity: .9; }
+  .ptile-text { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .ptile-text strong { font: 600 17px/1.15 var(--f-head); letter-spacing: -.02em; overflow-wrap: anywhere; }
+  .ptile-say { font-size: 13.5px; line-height: 1.35; color: var(--fg-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ptile-facts { font-size: 12.5px; font-weight: 600; color: var(--fg-3, var(--fg-2)); }
+  .ptile-new { align-items: center; background: none; box-shadow: inset 0 0 0 2px var(--bg-2); }
+  .ptile-plus { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--bg-2); }
+  .personas-lists .chips { margin: 4px 0 8px; }
+
+  .pstage { min-height: 0; gap: 14px; }
+  .pstage-who { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+  .pstage-who .orb::before { opacity: .95; }
+  .pstage-who .col { min-width: 0; gap: 3px; }
+  .pstage-name { font: 500 26px/1.08 var(--f-head); letter-spacing: -.035em; overflow-wrap: anywhere; }
+  .pstage-facts { font-size: 13px; font-weight: 650; color: var(--on-dim); }
+  .pstage-say { margin: 0; font: 500 18px/1.32 var(--f-head); letter-spacing: -.02em; text-wrap: pretty; overflow-wrap: anywhere; }
+  .pstage-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pstage-chips span { padding: 6px 11px; border-radius: 999px; background: rgba(255, 255, 255, .12); font-size: 12.5px; font-weight: 650; }
+  .pstage-notes { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--on-dim); }
+  .pstage-acts { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .pstage-acts .btn.link { align-self: center; }
+  .pstage-sheet .pstage { margin: 0; order: 0; }
+
+  .vtile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .vtile { border: 0; font: inherit; color: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 16px;
+    background: var(--bg-2); text-align: left; transition: background .2s ease, box-shadow .2s ease; }
+  .vtile:hover { background: color-mix(in oklch, var(--bg-2) 84%, var(--fg) 6%); }
+  .vtile strong { font-weight: 700; }
+  .vtile span { font-size: 12.5px; line-height: 1.3; color: var(--fg-2); }
+  .vtile[aria-checked="true"] { background: var(--surface); box-shadow: inset 0 0 0 2px var(--fg), var(--shadow); }
+  .persona-form .chip[aria-checked="true"] { background: var(--pri); color: var(--on-pri); }
+  .persona-form .notes-tools { margin-top: 2px; }
+  .intro-page > .back-link { margin-bottom: 4px; }
+  @media (min-width: 600px) { .ptile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .vtile-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (min-width: 1024px) {
+    .personas-page { max-width: 1240px; padding-inline: 48px; }
+    .personas-body { display: grid; grid-template-columns: minmax(0, 1fr) 380px; column-gap: 56px; align-items: start; }
+    .personas-side { display: flex; flex-direction: column; position: sticky; top: 88px; margin-top: 22px; }
+    .personas-side .pstage { order: 0; margin: 0; min-height: 340px; padding: 26px; }
+    .persona-form .pstage { min-height: 340px; }
+    .pstage-name { font-size: 30px; }
+  }
+  @media (min-width: 1280px) { .persona-form .vtile-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
   /* ---- panels that were forms in a box: open sections on the page, like New pod ----------------------- */
   .page .card:not(.about-box, .recorder, .credit-card, .accent) { background: none; box-shadow: none; padding: 0; border-radius: 0; gap: 12px; }
   .page .card:not(.about-box, .recorder, .credit-card, .accent) + .card,
@@ -704,7 +759,7 @@
       main .shelf, main .intro-sec, main .mem-group, main .mem-block, main .create-h2, main .page > .card {
         animation: settle linear both; animation-timeline: view(block); animation-range: entry 0px entry 160px; }
       main .saved-card, main .pod-grid > li, main .lib-list > li, main .mem-row, main .nb-page, main .open-tile, main .mtile,
-      main .radio-card, main .ledger > li, main .menu-item, main .people > li {
+      main .radio-card, main .ledger > li, main .menu-item, main .people > li, main .ptile, main .vtile {
         animation: settle-row linear both; animation-timeline: view(block); animation-range: entry 0px entry 110px; }
       /* a shelf: cards come up to size as they slide in, and the edge with more behind it fades */
       .tpl-row > *, .shelf-row > *, .kept-row > *, .chapter-cards > * {

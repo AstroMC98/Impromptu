@@ -147,6 +147,13 @@ hype; saved as `opening`, sent to the planner as `intro_style` and to a co-host'
 through `prompts.intro_opening`), and the theme, as tiles you can listen to
 (`/api/music/{id}/preview`).
 
+Personas (`static/js/views/personas.js`) follow the same pattern. Browsing: yours and the
+cast as tiles, and the one you pick on a stage with what you can do (beside the list on a
+wide window, in a sheet on a phone). Making or editing one (`/personas?edit=new`,
+`?edit=<id>`, `?from=<cast id>`) is a page of choices: name, gender and voice as tiles,
+personality with starters, traits, private notes, with the stage showing them as you go.
+The host editor on New pod and the Styles page still use the shared fields in a sheet.
+
 Panels that were a form in a white box (`.page .card`, apart from the topic box, the memo
 recorder and the credit card) are open sections on the page like New pod, and the saved
 cards (personas, styles, templates) are filled tiles rather than outlined ones.
