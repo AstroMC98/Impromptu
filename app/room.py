@@ -289,6 +289,14 @@ class ShowRoom:
                 starts = seg.setdefault("line_starts", [])
                 del starts[event["idx"]:]
                 starts.append(event["at"])
+        elif kind == "line_marks":
+            # Where the voice is inside a line (saved with the segment, for replays).
+            seg = self.segments.get(event["seq"])
+            if seg is not None:
+                marks = seg.setdefault("line_spans", [])
+                del marks[event["idx"]:]
+                marks.extend([[]] * (event["idx"] - len(marks)))
+                marks.append(event["spans"])
         elif kind == "segment_end":
             seg = self.segments.get(event["seq"])
             if seg is not None:

@@ -206,6 +206,25 @@ Panels that were a form in a white box (`.page .card`, apart from the topic box,
 recorder and the credit card) are open sections on the page like New pod, and the saved
 cards (personas, styles, templates) are filled tiles rather than outlined ones.
 
+## Captions that keep time
+
+Each line is voiced on its own, and its clip opens on about 0.3 s of silence, pauses at its
+commas and full stops, and trails off. The captions used to light words evenly across the
+whole clip, so they ran ahead at the start of a line and through every pause.
+
+Now the server finds where the voice is inside each line (`audio.voiced_spans`, from
+loudness in 20 ms frames) as soon as the line has been voiced, sends it (`line_marks`) and
+saves it with the segment (`line_spans`). The browser (`static/js/live/pace.js`) lights
+words by how much of the voice has gone by, so nothing lights before the first word and
+nothing moves during a pause, and it pins the longest pauses to the nearest punctuation so
+a sentence said faster in one half than the other still lands. `store.lineAt().frac` carries
+it, so the kinetic captions, the piece of a long line on screen and the speaker label all
+follow. Without marks (a line still arriving, or a pod saved before this) the estimate
+leaves out a typical lead-in and tail instead.
+
+`python -m tools.backfill_line_spans <data dir>` gives pods saved earlier their marks from
+their episode audio (local data only; pods in Firestore need the same pass when this ships).
+
 ## Checking it
 
 `python -m tests.visual` compares against baselines recorded before Dusk, so every shot

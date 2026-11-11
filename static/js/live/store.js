@@ -2,10 +2,15 @@
 // show (replay). Views never ask "what's happening?" without a playhead: each
 // listener hears the show at their own position, so captions, chapters and
 // call-in statuses are all selectors of pos.
+import { paceOf } from "./pace.js";
 import { spokenText } from "../html.js";
 import { joinNames, store as local } from "../util.js";
 
 const CHARS_PER_SECOND = 14;  // until a segment's real length is known
+
+// Without voice marks, how much of a line's start and end to treat as silence.
+const LEAD_SECONDS = 0.3;
+const TAIL_SECONDS = 0.2;
 
 export class ShowStore {
   constructor({ id, role, shareUrl, rate = 24000 }) {
@@ -117,6 +122,15 @@ export class ShowStore {
         if (seg) {
           seg.line_starts = (seg.line_starts || []).slice(0, e.idx);
           seg.line_starts[e.idx] = e.at;
+          if (seg.line_spans) seg.line_spans.length = Math.min(seg.line_spans.length, e.idx);
+        }
+        break;
+      }
+      case "line_marks": {   // where the voice is inside a line: the captions pace their words by it
+        const seg = this.segBySeq.get(e.seq);
+        if (seg) {
+          seg.line_spans = seg.line_spans || [];
+          seg.line_spans[e.idx] = e.spans;
         }
         break;
       }
@@ -232,11 +246,20 @@ export class ShowStore {
   }
 
   /** The line at `off` samples into seg, from where each line really starts in the audio.
-   *  A line's end is the next line's start; the one still being voiced is estimated from
-   *  how fast this segment's earlier lines went (characters per sample). */
+   *  How far through it (frac) comes from where the voice is in that line (pace.js) when
+   *  the server has said; until then, or for pods saved before it did, from the time gone
+   *  by, less the short silence every voiced line starts and ends with. A line's end is the
+   *  next line's start; the one still being voiced is estimated from how fast this
+   *  segment's earlier lines went (characters per sample). */
   _lineByStarts(seg, starts, off) {
     let idx = 0;
     for (let i = 0; i < starts.length && i < seg.lines.length; i++) if (starts[i] <= off) idx = i;
+    const spans = seg.line_spans?.[idx];
+    if (spans?.length && seg.lines[idx]) {
+      const cache = seg._pace || (seg._pace = []);
+      if (cache[idx]?.spans !== spans) cache[idx] = { spans, at: paceOf(seg.lines[idx].text, spans) };
+      return { seg, idx, frac: cache[idx].at(off) };
+    }
     const begin = starts[idx];
     let end = starts[idx + 1];
     if (end === undefined) {
@@ -247,7 +270,11 @@ export class ShowStore {
         end = begin + seg.weights[idx] * perWeight;
       }
     }
-    const frac = Math.max(0, Math.min(end > begin ? (off - begin) / (end - begin) : 1, starts[idx + 1] === undefined ? 0.98 : 1));
+    // No voice marks: a voiced line opens on about 0.3 s of silence and closes on a little more.
+    const lead = Math.min(LEAD_SECONDS * this.rate, (end - begin) * 0.2);
+    const tail = Math.min(TAIL_SECONDS * this.rate, (end - begin) * 0.15);
+    const span = end - begin - lead - tail;
+    const frac = Math.max(0, Math.min(span > 0 ? (off - begin - lead) / span : 1, starts[idx + 1] === undefined ? 0.98 : 1));
     return { seg, idx, frac };
   }
 

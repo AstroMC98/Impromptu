@@ -43,6 +43,7 @@ from .clock import LiveClock
 from .config import Settings
 from .limits import COMMENT_CHARS, COMMENTS_PER_SHOW, NAME_CHARS, QUEUED_COMMENTS_PER_SHOW
 from .llm import Gemini
+from .audio import voiced_spans
 from .models import (
     Beat, ContextBrief, ContextItem, InterruptNote, Line, ListenerComment, SegmentContext, SegmentDraft, ShowPlan,
     ShowRequest,
@@ -158,6 +159,7 @@ class Draft:
     held: bool = False          # input arrived too late to rewrite this one
     samples: int | None = None  # voiced length, once known
     line_starts: list[int] = field(default_factory=list)   # each line's first sample, from the segment's start
+    line_spans: list[list[list[int]]] = field(default_factory=list)   # per line: where the voice is (audio.voiced_spans)
     transcript_len: int = 0     # transcript length before this segment (for rewinding)
     prev_beat_lines: int = 0
     advanced: bool = False      # it finished a beat and moved the show on
@@ -863,6 +865,7 @@ class ShowRunner:
             """Voice the segment; False if the show stopped partway."""
             nonlocal samples
             draft.line_starts = []
+            draft.line_spans = []
             queues: list[asyncio.Queue] = [asyncio.Queue() for _ in draft.lines]
             gate = asyncio.Semaphore(SPEECH_AHEAD)
 
@@ -909,6 +912,8 @@ class ShowRunner:
                         samples += len(gap) // 2
                     draft.line_starts.append(samples)
                     self.room.publish({"type": "line", "seq": draft.seq, "idx": i, "at": samples})
+                    line_at = samples
+                    voiced = bytearray()      # this line's audio, to find where the voice is in it
                     carry = b""
                     while True:
                         # fetch() has its own stall checks and retries; this only guards against
@@ -929,7 +934,18 @@ class ShowRunner:
                         carry = data[cut:]
                         if cut:
                             self.room.push_audio(draft.seq, data[:cut])
+                            voiced += data[:cut]
                             samples += cut // 2
+                    # The line is all here (usually well before it has played): say where the
+                    # voice is in it, so the captions can pace their words by it.
+                    try:
+                        spans = [[a + line_at, b + line_at] for a, b in voiced_spans(bytes(voiced), self.rate)]
+                    except Exception:
+                        log.exception("segment %d line %d: couldn't find the voice", draft.seq, i)
+                        spans = []
+                    draft.line_spans.append(spans)
+                    if spans:
+                        self.room.publish({"type": "line_marks", "seq": draft.seq, "idx": i, "spans": spans})
                 return True
             finally:
                 for t in tasks:

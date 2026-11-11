@@ -975,6 +975,9 @@
   .intro-page .vibes + .pill-field { margin-top: 10px; }
   .intro-page .section-picks + [data-custom]:not(:empty) { margin-top: 6px; }
 
+  /* the player's transport: spacers that keep Play centred are not buttons, and don't look like them */
+  .np-gap { flex: none; width: 48px; height: 48px; pointer-events: none; }
+
   /* ---- panels that were forms in a box: open sections on the page, like New pod ----------------------- */
   .page .card:not(.about-box, .recorder, .credit-card, .accent) { background: none; box-shadow: none; padding: 0; border-radius: 0; gap: 12px; }
   .page .card:not(.about-box, .recorder, .credit-card, .accent) + .card,

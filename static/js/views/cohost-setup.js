@@ -145,7 +145,12 @@ export async function cohostSetupView(root) {
     hint: "How mortgages work. I'm buying my first flat and I know nothing about interest rates.",
     missing: "Say what you want to learn, even just a few words.",
   };
-  const wording = () => ({ roleplay: SCENE, educate: LESSON })[state.mode] || TOPIC;
+  const GUEST = {
+    label: "What are you on the show to talk about?",
+    hint: "I just ran my first marathon. Or: I'm launching an app that turns blog posts into podcasts.",
+    missing: "Say what you're on the show to talk about, even just a few words.",
+  };
+  const wording = () => ({ roleplay: SCENE, educate: LESSON, talkshow: GUEST })[state.mode] || TOPIC;
   let remembered = null;     // kept memories, once fetched
   const renderMemory = () => {
     if (!$("[data-memory]")) return;      // memory isn't switched on for this server

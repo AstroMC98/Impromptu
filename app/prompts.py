@@ -1106,6 +1106,11 @@ def cohost_opening(user_name: str, minutes: int, show_name: str = "", intro_line
                 f"the listeners{show}, say in a sentence what scene you and {user_name} are about to play "
                 f"and who plays whom, then start the scene with your character's first line.{line} "
                 "Keep the welcome under 15 seconds.)")
+    if mode == "talkshow":
+        return (f"(Producer: you're live and recording, about {minutes} minutes. Open the show: welcome "
+                f"the audience{show}, do a two- or three-line monologue with a joke about tonight's topic, "
+                f"then bring out {user_name} as tonight's guest and ask your first question.{line} "
+                "Keep it under 25 seconds.)")
     return (f"(Producer: you're live and recording, about {minutes} minutes. Open the show: welcome "
             f"the listeners{show}, introduce yourself and {user_name} in a sentence, set up the topic with a "
             f"hook, then hand it to {user_name} with a question.{line} Keep it under 20 seconds.)")

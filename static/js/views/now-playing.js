@@ -40,14 +40,14 @@ export function mountNowPlaying(host, ctl, { page = false, onClose } = {}) {
     </div>
     <div class="np-transport">
       ${s.producer && ctl.live ? html`<button class="icon-btn big" type="button" data-action="restyle" aria-label="Restyle the show">${icon("restyle")}</button>`
-        : html`<span class="icon-btn big" aria-hidden="true"></span>`}
+        : html`<span class="np-gap" aria-hidden="true"></span>`}
       <button class="icon-btn big" type="button" data-action="back15" aria-label="Back 15 seconds">${icon("back15", 28)}</button>
       <button class="play-btn" type="button" data-action="toggle-play" data-r="play" aria-label="Play"></button>
       ${ctl.live ? html`<button class="icon-btn big" type="button" data-action="jump-live" aria-label="Jump to live">${icon("jumpLive", 26)}</button>`
-        : html`<span class="icon-btn big" aria-hidden="true"></span>`}
+        : html`<span class="np-gap" aria-hidden="true"></span>`}
       ${ctl.live && s.producer ? html`<button class="icon-btn big" type="button" data-action="interrupt" aria-label="Interrupt the show">${icon("mic")}</button>`
         : ctl.live ? html`<button class="icon-btn big" type="button" data-action="callin" aria-label="Call in">${icon("chat")}</button>`
-          : html`<span class="icon-btn big" aria-hidden="true"></span>`}
+          : html`<span class="np-gap" aria-hidden="true"></span>`}
     </div>
     <div class="np-sub">
       <span class="talking" data-r="talking"></span>

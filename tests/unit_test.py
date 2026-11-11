@@ -2051,6 +2051,25 @@ def _():
     assert "Educate." in prompts.cohost_mode_switch("educate")
 
 
+@check("co-host: talk show is a mode, with a monologue opening of its own")
+def _():
+    req = CohostRequest(host=HostRequest(name="Nova"), mode="talkshow", topic="My first marathon")
+    system = prompts.cohost_system(req, cast_cohost(req.host), "Marc", "")
+    assert "MODE: Talk show." in system and "tonight's guest" in system
+    opening = prompts.cohost_opening("Marc", 10, mode="talkshow")
+    assert "monologue" in opening and "bring out Marc" in opening
+    assert "Talk show." in prompts.cohost_mode_switch("talkshow")
+
+
+@check("starter templates: a stage talk and a solo pod for one host, a talk show for two")
+def _():
+    from app.catalog import MUSIC_MOOD_FOR, MUSIC_MOODS, TEMPLATES_BY_ID
+    cast = {i: [h["name"] for h in TEMPLATES_BY_ID[i]["hosts"]] for i in ("stage-talk", "talk-show", "solo-pod")}
+    assert cast == {"stage-talk": ["Sam Rivera"], "talk-show": ["Zoe Park", "Dre"], "solo-pod": ["Nia Okoro"]}
+    assert "The host:" in TEMPLATES_BY_ID["talk-show"]["hosts"][0]["persona"]
+    assert all(MUSIC_MOOD_FOR[i] in MUSIC_MOODS for i in cast)
+
+
 @check("memory: proposals wait for a yes, repeats are skipped, and a co-host recalls their own and the shared")
 def _():
     from app import memory
@@ -2275,6 +2294,28 @@ def _():
     assert "self" in prompts.memory_schema()["properties"]["memories"]["items"]["properties"]["scope"]["enum"]
     system = prompts.MEMORY_SYSTEM.format(user="Marc", host="Zoe", limit=6)
     assert "about THEMSELVES" in system and 'scope "self"' in system
+
+
+@check("captions: the voice inside a line is found, with its lead-in, its pause and its tail left out")
+def _():
+    from app.audio import voiced_spans
+
+    rate = 24000
+
+    def tone(seconds, amp=6000):
+        t = np.arange(int(seconds * rate)) / rate
+        return (np.sin(2 * math.pi * 220 * t) * amp).astype("<i2").tobytes()
+
+    def hush(seconds):
+        return (np.random.default_rng(1).normal(0, 12, int(seconds * rate))).astype("<i2").tobytes()
+
+    clip = hush(0.2) + tone(1.0) + hush(0.1) + tone(0.5) + hush(0.4) + tone(0.8) + hush(0.3)
+    spans = voiced_spans(clip, rate)
+    assert len(spans) == 2, spans                       # the 0.1 s dip is part of the first stretch
+    (a, b), (c, d) = spans
+    near = lambda got, want: abs(got / rate - want) < 0.05
+    assert near(a, 0.2) and near(b, 1.8) and near(c, 2.2) and near(d, 3.0), [x / rate for x in (a, b, c, d)]
+    assert voiced_spans(hush(1.0), rate) == [] and voiced_spans(b"", rate) == []
 
 
 def main() -> int:

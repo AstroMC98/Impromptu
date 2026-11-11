@@ -1,5 +1,6 @@
 // Pieces of the show screens that the phone and desktop layouts share. Each is a
 // pure function of the store and a playhead position, returning markup.
+import { cueWeight, wordWeight } from "./live/pace.js";
 import { html, renderSpoken, spokenText } from "./html.js";
 import { icon, KIND_ICON } from "./icons.js";
 import { session } from "./session.js";
@@ -329,8 +330,7 @@ export function captionTick(region, store, pos, { calm = false } = {}) {
   if (!p._words) {
     p._words = wordify(p);
     let acc = 0;
-    p._ends = p._words.map((w) => (acc += w.classList.contains("cue") ? 2
-      : Math.max(1, w.textContent.replace(/[^\p{L}\p{N}']/gu, "").length) + 1));
+    p._ends = p._words.map((w) => (acc += w.classList.contains("cue") ? cueWeight(w.textContent) : wordWeight(w.textContent)));
     p._total = acc || 1;
     p.classList.add("kinetic");
     fitCaption(region);

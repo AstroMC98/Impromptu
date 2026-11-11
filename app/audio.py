@@ -87,3 +87,50 @@ class PcmWindow:
             if start + len(pcm) // 2 > before:
                 break
             self._chunks.popleft()
+
+
+# ---- where the voice is ------------------------------------------------------------------
+
+SPAN_FRAME_S = 0.02        # loudness is measured 20 ms at a time
+SPAN_MIN_GAP_S = 0.16      # a quieter stretch shorter than this is part of the speech around it
+SPAN_MIN_S = 0.06          # a blip shorter than this isn't speech
+
+
+def voiced_spans(pcm: bytes, rate: int) -> list[list[int]]:
+    """Where there is voice in a clip of 16-bit mono PCM: [[first sample, last sample], ...].
+
+    A line voiced on its own starts and ends with a little silence and pauses at its commas
+    and full stops. The captions light words by how much of the *voice* has gone by, not how
+    much time, so they wait through a pause instead of running ahead (static/js/live/pace.js).
+    """
+    import numpy as np
+
+    x = np.frombuffer(pcm[: len(pcm) - (len(pcm) % 2)], dtype="<i2").astype(np.float32)
+    frame = max(1, int(SPAN_FRAME_S * rate))
+    n = len(x) // frame
+    if n == 0:
+        return []
+    rms = np.sqrt((x[: n * frame].reshape(n, frame) ** 2).mean(axis=1))
+    peak = float(rms.max())
+    if peak < 60:              # silence all the way through
+        return []
+    loud = rms > max(peak * 0.06, 90.0)
+    spans: list[list[int]] = []
+    start = None
+    for i, on in enumerate(loud):
+        if on and start is None:
+            start = i
+        elif not on and start is not None:
+            spans.append([start, i])
+            start = None
+    if start is not None:
+        spans.append([start, n])
+    merged: list[list[int]] = []
+    gap = SPAN_MIN_GAP_S / SPAN_FRAME_S
+    for a, b in spans:
+        if merged and a - merged[-1][1] < gap:
+            merged[-1][1] = b
+        else:
+            merged.append([a, b])
+    keep = [[a * frame, b * frame] for a, b in merged if (b - a) * SPAN_FRAME_S >= SPAN_MIN_S]
+    return keep
