@@ -185,6 +185,11 @@ The voice memo page keeps its recorder first; on a wide window a stage beside it
 you'll get (memo or not, format, length and music, whether you review the outline), with
 Make under it. On a phone that stage is hidden and the bar at the bottom carries Make.
 
+Memory (`static/js/views/memory.js`) keeps the review deck on one side and puts everything
+else in four tabs beside it (under it on a phone): Kept, Listener notes, Notebooks, Settings
+(the three switches). A caller memory shows the question on its own with who asked it as a
+label (`shown()`); the stored sentence is unchanged and is what the edit sheet opens.
+
 Panels that were a form in a white box (`.page .card`, apart from the topic box, the memo
 recorder and the credit card) are open sections on the page like New pod, and the saved
 cards (personas, styles, templates) are filled tiles rather than outlined ones.

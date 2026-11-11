@@ -1,7 +1,8 @@
-// Memory: what your co-hosts remember about you. After a call with memory on, they propose
-// a few things; nothing is kept until you say so, one card at a time: right keeps it, left
-// forgets it. Below the deck is everything already kept, per co-host and shared, where you
-// can reword, move, remove or add. Every swipe has a button and a key (Left, Right).
+// Memory: what your co-hosts remember. Suggestions arrive as a deck (after a call with memory
+// on, when a caller is remembered, when listeners agree on something); nothing is kept until
+// you say so, one card at a time: right keeps it, left forgets it. Every swipe has a button
+// and a key (Left, Right). Beside the deck (under it on a phone) are four tabs: what's kept,
+// the notes listeners left, each host's notebook, and the settings.
 import { api } from "../api.js";
 import { waiting } from "../components.js";
 import { html, setHtml } from "../html.js";
@@ -24,6 +25,16 @@ const fixed = (m) => m?.scope === "caller" || m?.scope === "audience";
 const whose = (m) => (m.scope === "caller" ? `Caller · ${m.caller_name || "a listener"}`
   : m.scope === "audience" ? `${m.listeners || "Several"} listeners said`
   : m.scope === "shared" || !m.host ? "Every co-host" : m.host);
+/** A caller memory is stored as a sentence ('Jo called in to "…" and asked: …'). On screen
+ *  the question stands on its own, with who asked it as a label. Anything reworded shows as is. */
+const CALLED = /^(.{1,40}) called in to "(.*)" and asked: ([\s\S]+)$/;
+const shown = (m) => {
+  const hit = m.scope === "caller" ? CALLED.exec(m.text || "") : null;
+  if (hit) return { text: `“${hit[3]}”`, tag: `${hit[1]} asked` };
+  return { text: m.text, tag: m.scope === "caller" ? `Caller · ${m.caller_name || "a listener"}`
+    : m.scope === "audience" ? `${m.listeners || "Several"} listeners` : "" };
+};
+const TABS = [["kept", "Kept"], ["notes", "Listener notes"], ["notebooks", "Notebooks"], ["settings", "Settings"]];
 
 export async function memoryView(root) {
   if (!session.signedIn) {
@@ -42,8 +53,11 @@ export async function memoryView(root) {
     <main class="memory-main">
       <div class="page-title"><h1 class="two"><span>What your co-hosts remember.</span> <span class="ask">Nothing is kept until you say so.</span></h1></div>
       <section class="mem-review" data-review aria-label="Memories to review"></section>
-      <section class="mem-kept" data-kept aria-label="Kept memories"></section>
-      <section class="mem-more" data-more aria-label="Notebooks and callers"></section>
+      <section class="mem-side" aria-label="What's kept, notes, notebooks and settings">
+        <div class="chips mem-tabs" role="tablist" aria-label="Memory" data-tabs></div>
+        <div class="mem-kept" data-kept role="tabpanel"></div>
+        <div class="mem-more" data-more role="tabpanel"></div>
+      </section>
     </main>`);
   root.append(el);
   const offHead = bindHeader(el);
@@ -58,13 +72,23 @@ export async function memoryView(root) {
   let notes = [];
   let threshold = 3;
   let notebooks = [];
+  let tab = "kept";
+
+  const renderTabs = () => {
+    if (dead) return;
+    const n = { kept: kept.length, notes: notes.length, notebooks: notebooks.length };
+    setHtml($("[data-tabs]"), html`${TABS.map(([id, label]) => html`
+      <button type="button" class="chip" role="tab" data-tab="${id}" aria-selected="${id === tab ? "true" : "false"}" aria-pressed="${id === tab ? "true" : "false"}">${label}${n[id] ? html`<span class="chip-sub">${n[id]}</span>` : ""}</button>`)}`);
+    $("[data-kept]").hidden = tab !== "kept";
+    $("[data-more]").hidden = tab === "kept";
+  };
 
   const card = (m, depth) => html`
     <article class="mcard" data-depth="${depth}" style="--gel:${gel(m)}" ${depth ? html`aria-hidden="true"` : ""}>
       <span class="mcard-who">${whose(m)}</span>
       <span class="xstamp keep" aria-hidden="true">Keep</span>
       <span class="xstamp pass" aria-hidden="true">Forget</span>
-      <p class="mcard-text">${m.text}</p>
+      <p class="mcard-text">${shown(m).text}</p>
       ${m.show_title ? html`<span class="mcard-from">From “${m.show_title}”</span>` : ""}
     </article>`;
 
@@ -72,11 +96,12 @@ export async function memoryView(root) {
     if (dead) return;
     const m = pending[0];
     if (!m) {
-      setHtml($("[data-review]"), kept.length ? "" : html`
+      setHtml($("[data-review]"), html`
         <div class="mem-empty">
-          <p class="mem-empty-t">Nothing to review yet.</p>
-          <p class="muted">Start a co-host call with “Use memory” on. Afterwards, what's worth remembering shows up here for a yes or a no.</p>
-          <a class="btn white" href="/cohost" data-link>${icon("mic", 16, 2.2)}Start a co-host call</a>
+          <p class="mem-empty-t">${kept.length ? "All caught up." : "Nothing to review yet."}</p>
+          <p class="muted">${kept.length ? "New suggestions land here: after a call with memory on, when a caller is remembered, or when listeners agree on something."
+            : "Start a co-host call with “Use memory” on. Afterwards, what's worth remembering shows up here for a yes or a no."}</p>
+          <a class="btn ${kept.length ? "quiet" : "white"}" href="/cohost" data-link>${icon("mic", 16, 2.2)}Start a co-host call</a>
         </div>`);
       return;
     }
@@ -106,7 +131,8 @@ export async function memoryView(root) {
       <h3 class="mem-group-h">${title} <span class="faint">${items.length}</span></h3>
       <ul class="mem-list">${items.map((m) => html`
         <li class="mem-row">
-          <span class="mem-text">${m.text}</span>
+          <span class="mem-text">${shown(m).tag ? html`<span class="mem-tag">${shown(m).tag}</span>` : ""}${shown(m).text}
+            ${fixed(m) && m.host ? html`<span class="note-meta">For ${m.host}</span>` : ""}</span>
           <button class="round-btn mem-btn" type="button" data-edit="${m.id}" aria-label="Edit: ${m.text}">${icon("edit", 16)}</button>
           <button class="round-btn mem-btn" type="button" data-forget="${m.id}" aria-label="Forget: ${m.text}">${icon("close", 16, 2.4)}</button>
         </li>`)}</ul>
@@ -120,14 +146,14 @@ export async function memoryView(root) {
     const hosts = [...new Map(kept.filter((m) => m.scope === "host" && m.host_key).map((m) => [m.host_key, m.host])).entries()];
     setHtml($("[data-kept]"), html`
       <div class="mem-kept-head">
-        <h2 class="mem-h">Kept <span class="faint">${kept.length}</span></h2>
-        <button class="btn quiet" type="button" data-add>${icon("plus", 16, 2.4)}Add one</button>
+        <p class="muted small">${kept.length ? "What your hosts know. Reword or remove anything." : "Nothing kept yet. You can also write one yourself."}</p>
+        <button class="btn quiet small-btn" type="button" data-add>${icon("plus", 14, 2.4)}Add one</button>
       </div>
-      ${kept.length ? "" : html`<p class="muted">Nothing kept yet. You can also write one yourself.</p>`}
       ${group("Every co-host knows", shared)}
       ${hosts.map(([key, name]) => group(`Only ${name} knows`, kept.filter((m) => m.scope === "host" && m.host_key === key)))}
       ${group("Callers your hosts remember", callers)}
       ${group("What listeners have told your hosts", audience)}`);
+    renderTabs();
   };
 
   /** Under the memories: each host's notebook, and whether callers are remembered. */
@@ -137,9 +163,23 @@ export async function memoryView(root) {
     for (const m of kept.concat(pending)) if (!fixed(m) && m.host_key && !named.has(m.host_key)) named.set(m.host_key, m.host);
     for (const p of session.options.persona_presets || []) if (!named.has(p.name.toLowerCase())) named.set(p.name.toLowerCase(), p.name);
     const without = [...named].filter(([key]) => !notebooks.some((n) => n.host_key === key));
-    setHtml($("[data-more]"), html`
-      <div class="mem-block">
-        <h2 class="mem-h">Notebooks</h2>
+    const toggle = (attr, on, ic, title, desc) => html`
+      <button type="button" role="switch" class="radio-card research-card" ${attr} aria-checked="${on ? "true" : "false"}">
+        <span class="radio-dot" aria-hidden="true"></span>
+        <span class="radio-text"><span class="radio-title">${icon(ic, 16)} ${title}</span><span class="radio-desc">${desc}</span></span>
+      </button>`;
+    const panels = {
+      notes: () => html`
+        <p class="muted small">Notes listeners left your hosts. They're never read on air, and one note changes nothing: when
+          ${threshold} different listeners say the same thing, it's suggested in the deck.</p>
+        ${!takeNotes ? html`<p class="muted small">You've switched listener notes off (Settings), so no new ones arrive.</p>` : ""}
+        ${notes.length ? html`<ul class="mem-list">${notes.map((n) => html`
+          <li class="mem-row note-row">
+            <span class="mem-text">${n.text}
+              <span class="note-meta">${n.from_name} on “${n.show_title || "a pod"}”${n.used ? html` · <b class="note-used">counted</b>` : ""}</span></span>
+            <button class="round-btn mem-btn" type="button" data-remove-note="${n.id}" aria-label="Remove the note from ${n.from_name}">${icon("close", 16, 2.4)}</button>
+          </li>`)}</ul>` : html`<div class="mem-none">No notes yet. Listeners find “Leave the hosts a note” in a pod's menu.</div>`}`,
+      notebooks: () => html`
         <p class="muted small">Pages of your own material a host can look things up in: facts, an outline, a whole report.</p>
         ${notebooks.length ? html`<ul class="mem-list">${notebooks.map((n) => html`
           <li><a class="mem-row nb-shelf" href="/notebook?host=${encodeURIComponent(n.host)}" data-link>
@@ -151,38 +191,17 @@ export async function memoryView(root) {
             <option value="">Start a notebook for…</option>
             ${without.map(([, name]) => html`<option value="${name}">${name}</option>`)}
           </select>
-        </div>
-      </div>
-      <div class="mem-block">
-        <h2 class="mem-h">Callers</h2>
-        <button type="button" role="switch" class="radio-card research-card" data-toggle-callers aria-checked="${rememberCallers ? "true" : "false"}">
-          <span class="radio-dot" aria-hidden="true"></span>
-          <span class="radio-text"><span class="radio-title">${icon("people", 16)} Remember callers</span>
-            <span class="radio-desc">When someone signed in calls one of your live pods, its hosts can remember them for next time.
-              Each caller shows up above for a yes or a no first.</span></span>
-        </button>
-        <button type="button" role="switch" class="radio-card research-card" data-toggle-me aria-checked="${rememberMe ? "true" : "false"}">
-          <span class="radio-dot" aria-hidden="true"></span>
-          <span class="radio-text"><span class="radio-title">${icon("user", 16)} Let hosts remember me</span>
-            <span class="radio-desc">When you call in to someone else's live pod, its hosts may remember you for next time.
-              Turn this off and no host remembers you or is told you've called before.</span></span>
-        </button>
-      </div>
-      <div class="mem-block">
-        <h2 class="mem-h">Listeners ${notes.length ? html`<span class="faint">${notes.length}</span>` : ""}</h2>
-        <button type="button" role="switch" class="radio-card research-card" data-toggle-notes aria-checked="${takeNotes ? "true" : "false"}">
-          <span class="radio-dot" aria-hidden="true"></span>
-          <span class="radio-text"><span class="radio-title">${icon("note", 16)} Take notes from listeners</span>
-            <span class="radio-desc">Listeners can leave your hosts a note from any of your pods. It's never read on air, and one note
-              changes nothing: when ${threshold} different listeners say the same thing, it shows up above for a yes or a no.</span></span>
-        </button>
-        ${notes.length ? html`<ul class="mem-list">${notes.map((n) => html`
-          <li class="mem-row note-row">
-            <span class="mem-text">${n.text}
-              <span class="note-meta">${n.from_name} on “${n.show_title || "a pod"}”${n.used ? " · counted" : ""}</span></span>
-            <button class="round-btn mem-btn" type="button" data-remove-note="${n.id}" aria-label="Remove the note from ${n.from_name}">${icon("close", 16, 2.4)}</button>
-          </li>`)}</ul>` : takeNotes ? html`<p class="muted small">No notes yet.</p>` : ""}
-      </div>`);
+        </div>`,
+      settings: () => html`
+        ${toggle("data-toggle-callers", rememberCallers, "people", "Remember callers",
+          "When someone signed in calls one of your live pods, its hosts can remember them for next time. Each caller is suggested in the deck first.")}
+        ${toggle("data-toggle-notes", takeNotes, "note", "Take notes from listeners",
+          `Listeners can leave your hosts a note from any of your pods. When ${threshold} of them say the same thing, it's suggested in the deck.`)}
+        ${toggle("data-toggle-me", rememberMe, "user", "Let hosts remember me",
+          "When you call in to someone else's live pod, its hosts may remember you. Off, no host remembers you or is told you've called before.")}`,
+    };
+    setHtml($("[data-more]"), panels[tab] ? panels[tab]() : "");
+    renderTabs();
   };
 
   const say = (text) => { const s = $("[data-said]"); if (s) s.textContent = text; };
@@ -312,6 +331,13 @@ export async function memoryView(root) {
       return renderReview(true);
     }
     if (t.closest("[data-add]")) return editSheet(null);
+    const pickTab = t.closest("[data-tab]");
+    if (pickTab) {
+      tab = pickTab.dataset.tab;
+      renderKept();
+      renderMore();
+      return el.querySelector(`[data-tab="${tab}"]`)?.focus({ preventScroll: true });
+    }
     if (t.closest("[data-toggle-notes]")) {
       try {
         takeNotes = (await api.memorySettings({ listener_notes: !takeNotes })).listener_notes;
